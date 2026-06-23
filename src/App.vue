@@ -106,8 +106,13 @@ function slide() {
 
 function spawnObstacle() {
   const kind = Math.random() > 0.56 ? 'high' : 'low'
+  const highTypes = ['gate', 'barrier']
+  const lowTypes = ['cone', 'crate']
   state.obstacles.push({
     kind,
+    type: kind === 'high'
+      ? highTypes[Math.floor(Math.random() * highTypes.length)]
+      : lowTypes[Math.floor(Math.random() * lowTypes.length)],
     lane: Math.floor(Math.random() * 3),
     y: -80,
     width: 54,
@@ -220,25 +225,92 @@ function drawPlayer(ctx) {
   const x = laneX(state.playerLane)
   const y = state.playerY - state.jumpHeight
   const sliding = state.slideTimer > 0
+  const step = Math.sin(performance.now() / 110) * 6
+
   ctx.fillStyle = 'rgba(0, 0, 0, 0.28)'
   ctx.beginPath()
-  ctx.ellipse(x, y + 34, 34, 10, 0, 0, Math.PI * 2)
+  ctx.ellipse(x, state.playerY + 34, 36, 10, 0, 0, Math.PI * 2)
   ctx.fill()
 
+  ctx.strokeStyle = '#0f172a'
+  ctx.lineWidth = 5
+  ctx.lineCap = 'round'
+
+  if (sliding) {
+    ctx.fillStyle = '#38bdf8'
+    ctx.beginPath()
+    ctx.roundRect(x - 32, y - 18, 64, 26, 12)
+    ctx.fill()
+    ctx.fillStyle = '#f8fafc'
+    ctx.beginPath()
+    ctx.arc(x + 24, y - 24, 12, 0, Math.PI * 2)
+    ctx.fill()
+    return
+  }
+
+  ctx.strokeStyle = '#38bdf8'
+  ctx.beginPath()
+  ctx.moveTo(x - 15, y - 4)
+  ctx.lineTo(x - 28, y + 26 + step)
+  ctx.moveTo(x + 15, y - 4)
+  ctx.lineTo(x + 26, y + 26 - step)
+  ctx.moveTo(x - 10, y - 26)
+  ctx.lineTo(x - 30, y - 10)
+  ctx.moveTo(x + 10, y - 26)
+  ctx.lineTo(x + 30, y - 12)
+  ctx.stroke()
+
   ctx.fillStyle = '#38bdf8'
-  ctx.fillRect(x - (sliding ? 28 : 18), y - (sliding ? 12 : 34), sliding ? 56 : 36, sliding ? 30 : 58)
+  ctx.beginPath()
+  ctx.roundRect(x - 18, y - 36, 36, 44, 12)
+  ctx.fill()
+
   ctx.fillStyle = '#f8fafc'
-  ctx.fillRect(x - 12, y - (sliding ? 28 : 50), 24, 22)
+  ctx.beginPath()
+  ctx.arc(x, y - 52, 14, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.fillStyle = '#0f172a'
+  ctx.fillRect(x - 7, y - 54, 14, 4)
 }
 
 function drawObstacle(ctx, obstacle) {
   const x = laneX(obstacle.lane)
-  ctx.fillStyle = obstacle.kind === 'high' ? '#ef4444' : '#f97316'
-  ctx.fillRect(x - obstacle.width / 2, obstacle.y - obstacle.height / 2, obstacle.width, obstacle.height)
-  ctx.fillStyle = '#111827'
-  ctx.font = '800 12px Inter, sans-serif'
-  ctx.textAlign = 'center'
-  ctx.fillText(obstacle.kind === 'high' ? 'SLIDE' : 'JUMP', x, obstacle.y + 4)
+  const y = obstacle.y
+
+  if (obstacle.type === 'gate') {
+    ctx.fillStyle = '#ef4444'
+    ctx.fillRect(x - 34, y - 42, 12, 78)
+    ctx.fillRect(x + 22, y - 42, 12, 78)
+    ctx.fillStyle = '#fca5a5'
+    ctx.fillRect(x - 34, y - 42, 68, 12)
+    return
+  }
+
+  if (obstacle.type === 'barrier') {
+    ctx.fillStyle = '#ef4444'
+    ctx.fillRect(x - 34, y - 18, 68, 38)
+    ctx.fillStyle = '#fef2f2'
+    ctx.fillRect(x - 26, y - 8, 52, 8)
+    return
+  }
+
+  if (obstacle.type === 'cone') {
+    ctx.fillStyle = '#f97316'
+    ctx.beginPath()
+    ctx.moveTo(x, y - 32)
+    ctx.lineTo(x - 28, y + 26)
+    ctx.lineTo(x + 28, y + 26)
+    ctx.closePath()
+    ctx.fill()
+    ctx.fillStyle = '#fed7aa'
+    ctx.fillRect(x - 18, y + 2, 36, 8)
+    return
+  }
+
+  ctx.fillStyle = '#a16207'
+  ctx.fillRect(x - 28, y - 26, 56, 52)
+  ctx.strokeStyle = '#fef3c7'
+  ctx.strokeRect(x - 20, y - 18, 40, 36)
 }
 
 function drawCoin(ctx, coin) {
