@@ -5,379 +5,362 @@ const canvas = ref(null)
 const game = reactive({
   status: 'ready',
   score: 0,
-  coins: 0,
-  combo: 0,
-  multiplier: 1,
-  best: Number(localStorage.getItem('runner-best') || 0),
+  lives: 3,
+  wave: 1,
+  charge: 0,
+  best: Number(localStorage.getItem('shooter-best') || 0),
   message: '',
 })
 
-const lanes = [-1, 0, 1]
-const input = {
-  left: false,
-  right: false,
-  jump: false,
-  slide: false,
-}
+const input = { up: false, down: false, left: false, right: false, fire: false }
 
 const state = {
   ctx: null,
   width: 0,
   height: 0,
   pixelRatio: 1,
-  playerLane: 1,
-  targetLane: 1,
-  playerY: 0,
-  jumpHeight: 0,
-  jumpVelocity: 0,
-  slideTimer: 0,
-  speed: 240,
-  distance: 0,
-  spawnTimer: 0,
-  coinTimer: 0,
-  comboTimer: 0,
-  messageTimer: 0,
-  obstacles: [],
-  coins: [],
+  player: { x: 0, y: 0, radius: 17, cooldown: 0, invulnerable: 0 },
+  bullets: [],
+  enemies: [],
+  enemyBullets: [],
+  powerups: [],
   particles: [],
-  animationId: 0,
+  stars: [],
+  spawnTimer: 0,
+  waveTimer: 0,
+  shake: 0,
+  messageTimer: 0,
   lastTime: 0,
+  animationId: 0,
 }
 
 const instruction = computed(() => {
-  if (game.status === 'ready') return 'Leertaste oder Tippen startet'
+  if (game.status === 'ready') return 'Leertaste oder Fire startet'
   if (game.status === 'over') return 'Game Over - Leertaste startet neu'
-  return 'Links/Rechts wechseln, Hoch springt, Runter rutscht'
+  return 'WASD/Pfeile bewegen, Leertaste schiesst'
 })
 
-function laneX(laneIndex) {
-  const roadWidth = Math.min(state.width * 0.78, 520)
-  const center = state.width / 2
-  const gap = roadWidth / 3
-  return center + lanes[laneIndex] * gap
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value))
 }
 
-function resetGame() {
-  game.score = 0
-  game.coins = 0
-  game.combo = 0
-  game.multiplier = 1
-  game.message = ''
-  state.playerLane = 1
-  state.targetLane = 1
-  state.jumpHeight = 0
-  state.jumpVelocity = 0
-  state.slideTimer = 0
-  state.speed = 240
-  state.distance = 0
-  state.spawnTimer = 0.9
-  state.coinTimer = 0.45
-  state.comboTimer = 0
-  state.messageTimer = 0
-  state.obstacles = []
-  state.coins = []
+function showMessage(text, duration = 1) {
+  game.message = text
+  state.messageTimer = duration
+}
+
+function resetWorld() {
+  state.player.x = state.width / 2
+  state.player.y = state.height - 95
+  state.player.cooldown = 0
+  state.player.invulnerable = 1.2
+  state.bullets = []
+  state.enemies = []
+  state.enemyBullets = []
+  state.powerups = []
   state.particles = []
+  state.spawnTimer = 0.35
+  state.waveTimer = 0
+  state.shake = 0
+  game.score = 0
+  game.lives = 3
+  game.wave = 1
+  game.charge = 0
+  createStars()
 }
 
 function startGame() {
-  resetGame()
+  resetWorld()
   game.status = 'running'
+  showMessage('Wave 1')
 }
 
 function endGame() {
   game.status = 'over'
   game.best = Math.max(game.best, game.score)
-  localStorage.setItem('runner-best', String(game.best))
+  localStorage.setItem('shooter-best', String(game.best))
 }
 
-function moveLane(direction) {
-  if (game.status !== 'running') {
-    startGame()
-    return
-  }
-  state.targetLane = Math.max(0, Math.min(2, state.targetLane + direction))
+function createStars() {
+  state.stars = Array.from({ length: 90 }, () => ({
+    x: Math.random() * state.width,
+    y: Math.random() * state.height,
+    speed: 20 + Math.random() * 80,
+    size: 1 + Math.random() * 2.4,
+  }))
 }
 
-function jump() {
-  if (game.status !== 'running') {
-    startGame()
-    return
-  }
-  if (state.jumpHeight > 2 || state.slideTimer > 0) return
-  state.jumpVelocity = 540
-}
-
-function slide() {
-  if (game.status !== 'running') {
-    startGame()
-    return
-  }
-  if (state.jumpHeight > 8) return
-  state.slideTimer = 0.55
-}
-
-function spawnObstacle() {
-  const kind = Math.random() > 0.56 ? 'high' : 'low'
-  const highTypes = ['gate', 'barrier']
-  const lowTypes = ['cone', 'crate']
-  state.obstacles.push({
+function spawnEnemy() {
+  const roll = Math.random()
+  const kind = roll > 0.82 ? 'tank' : roll > 0.56 ? 'zigzag' : 'scout'
+  const health = kind === 'tank' ? 4 + Math.floor(game.wave / 3) : kind === 'zigzag' ? 2 : 1
+  state.enemies.push({
     kind,
-    type: kind === 'high'
-      ? highTypes[Math.floor(Math.random() * highTypes.length)]
-      : lowTypes[Math.floor(Math.random() * lowTypes.length)],
-    lane: Math.floor(Math.random() * 3),
-    y: -80,
-    width: 54,
-    height: kind === 'high' ? 70 : 44,
+    x: 48 + Math.random() * (state.width - 96),
+    y: -36,
+    radius: kind === 'tank' ? 25 : 18,
+    health,
+    maxHealth: health,
+    speed: (kind === 'tank' ? 58 : 95) + game.wave * 7,
+    drift: Math.random() > 0.5 ? 1 : -1,
+    phase: Math.random() * Math.PI * 2,
+    shotTimer: 0.9 + Math.random() * 1.2,
   })
 }
 
-function spawnCoinLine() {
-  const lane = Math.floor(Math.random() * 3)
-  for (let i = 0; i < 4; i += 1) {
-    state.coins.push({ lane, y: -80 - i * 48, radius: 12 })
+function fireBullet() {
+  if (game.status === 'ready' || game.status === 'over') {
+    startGame()
+    return
+  }
+  if (game.status !== 'running' || state.player.cooldown > 0) return
+
+  const spread = game.charge >= 100 ? [-13, 0, 13] : [0]
+  spread.forEach((offset) => {
+    state.bullets.push({
+      x: state.player.x + offset,
+      y: state.player.y - 24,
+      vx: offset * 0.8,
+      vy: -570,
+      radius: 5,
+      damage: game.charge >= 100 ? 2 : 1,
+    })
+  })
+
+  state.player.cooldown = game.charge >= 100 ? 0.12 : 0.18
+  if (game.charge >= 100) {
+    game.charge = 0
+    state.shake = 5
+    showMessage('TRIPLE SHOT')
   }
 }
 
-function showMessage(text, duration = 0.9) {
-  game.message = text
-  state.messageTimer = duration
-}
-
-function addParticles(x, y, color = '#facc15', amount = 10) {
+function addExplosion(x, y, color = '#f97316', amount = 18) {
   for (let i = 0; i < amount; i += 1) {
     const angle = Math.random() * Math.PI * 2
-    const speed = 60 + Math.random() * 160
+    const speed = 70 + Math.random() * 220
     state.particles.push({
       x,
       y,
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed,
-      life: 0.5 + Math.random() * 0.35,
+      life: 0.45 + Math.random() * 0.35,
       color,
+      size: 2 + Math.random() * 5,
     })
   }
 }
 
-function addCombo(x, y) {
-  game.combo += 1
-  game.multiplier = 1 + Math.min(4, Math.floor(game.combo / 5))
-  state.comboTimer = 2.2
-  addParticles(x, y, game.multiplier > 2 ? '#38bdf8' : '#facc15', 8 + game.multiplier * 2)
-  if (game.combo > 1 && game.combo % 5 === 0) {
-    showMessage('Combo x' + game.multiplier)
-  }
+function maybeDropPowerup(x, y) {
+  if (Math.random() > 0.18) return
+  state.powerups.push({
+    x,
+    y,
+    radius: 13,
+    vy: 115,
+    kind: Math.random() > 0.55 ? 'life' : 'charge',
+  })
+}
+
+function damagePlayer() {
+  if (state.player.invulnerable > 0) return
+  game.lives -= 1
+  state.player.invulnerable = 1.25
+  state.shake = 9
+  addExplosion(state.player.x, state.player.y, '#38bdf8', 24)
+  if (game.lives <= 0) endGame()
 }
 
 function update(delta) {
   if (game.status !== 'running') return
 
-  state.distance += state.speed * delta
-  game.score = Math.floor(state.distance / 8) + game.coins * 25 * game.multiplier
-  state.speed = Math.min(440, state.speed + delta * 7)
-  state.playerLane += (state.targetLane - state.playerLane) * Math.min(1, delta * 12)
-  state.slideTimer = Math.max(0, state.slideTimer - delta)
-  state.comboTimer = Math.max(0, state.comboTimer - delta)
+  state.player.cooldown = Math.max(0, state.player.cooldown - delta)
+  state.player.invulnerable = Math.max(0, state.player.invulnerable - delta)
+  state.shake = Math.max(0, state.shake - 24 * delta)
   state.messageTimer = Math.max(0, state.messageTimer - delta)
   if (state.messageTimer === 0) game.message = ''
-  if (state.comboTimer === 0 && game.combo) {
-    game.combo = 0
-    game.multiplier = 1
-  }
-  state.jumpHeight = Math.max(0, state.jumpHeight + state.jumpVelocity * delta)
-  if (state.jumpHeight > 0 || state.jumpVelocity > 0) {
-    state.jumpVelocity -= 1380 * delta
-  }
-  if (state.jumpHeight === 0 && state.jumpVelocity < 0) {
-    state.jumpVelocity = 0
-  }
+  game.charge = Math.min(100, game.charge + delta * 7)
+
+  const moveX = Number(input.right) - Number(input.left)
+  const moveY = Number(input.down) - Number(input.up)
+  const length = Math.hypot(moveX, moveY) || 1
+  const speed = 285
+  state.player.x = clamp(state.player.x + (moveX / length) * speed * delta, 25, state.width - 25)
+  state.player.y = clamp(state.player.y + (moveY / length) * speed * delta, state.height * 0.45, state.height - 42)
+  if (input.fire) fireBullet()
+
+  state.stars.forEach((star) => {
+    star.y += star.speed * delta
+    if (star.y > state.height) {
+      star.y = -4
+      star.x = Math.random() * state.width
+    }
+  })
+
+  state.bullets.forEach((bullet) => {
+    bullet.x += bullet.vx * delta
+    bullet.y += bullet.vy * delta
+  })
 
   state.spawnTimer -= delta
-  state.coinTimer -= delta
+  state.waveTimer += delta
   if (state.spawnTimer <= 0) {
-    spawnObstacle()
-    state.spawnTimer = Math.max(0.55, 1.25 - state.speed / 520)
+    spawnEnemy()
+    state.spawnTimer = Math.max(0.28, 0.95 - game.wave * 0.045) + Math.random() * 0.3
   }
-  if (state.coinTimer <= 0) {
-    spawnCoinLine()
-    state.coinTimer = 1.15
+  if (state.waveTimer > 18) {
+    game.wave += 1
+    state.waveTimer = 0
+    state.spawnTimer = 0.1
+    showMessage('Wave ' + game.wave)
   }
 
-  state.obstacles.forEach((obstacle) => {
-    obstacle.y += state.speed * delta
+  state.enemies.forEach((enemy) => {
+    enemy.phase += delta * 4
+    enemy.y += enemy.speed * delta
+    if (enemy.kind === 'zigzag') enemy.x += Math.sin(enemy.phase) * enemy.drift * 95 * delta
+    enemy.x = clamp(enemy.x, 24, state.width - 24)
+    enemy.shotTimer -= delta
+    if (enemy.shotTimer <= 0 && enemy.y > 20 && enemy.y < state.height * 0.68) {
+      const angle = Math.atan2(state.player.y - enemy.y, state.player.x - enemy.x)
+      state.enemyBullets.push({ x: enemy.x, y: enemy.y + 16, vx: Math.cos(angle) * 185, vy: Math.sin(angle) * 185, radius: 6 })
+      enemy.shotTimer = enemy.kind === 'tank' ? 1.2 : 1.6
+    }
   })
-  state.coins.forEach((coin) => {
-    coin.y += state.speed * delta
+  state.enemyBullets.forEach((bullet) => {
+    bullet.x += bullet.vx * delta
+    bullet.y += bullet.vy * delta
   })
+  state.powerups.forEach((powerup) => {
+    powerup.y += powerup.vy * delta
+  })
+
+  checkCollisions()
+  state.bullets = state.bullets.filter((bullet) => bullet.y > -20)
+  state.enemyBullets = state.enemyBullets.filter((bullet) => bullet.y < state.height + 30)
+  state.enemies = state.enemies.filter((enemy) => enemy.y < state.height + 55 && enemy.health > 0)
+  state.powerups = state.powerups.filter((powerup) => powerup.y < state.height + 30)
   state.particles.forEach((particle) => {
     particle.life -= delta
     particle.x += particle.vx * delta
     particle.y += particle.vy * delta
-    particle.vy += 260 * delta
+    particle.vx *= 1 - delta * 1.8
+    particle.vy *= 1 - delta * 1.8
   })
-
-  checkCollisions()
-  state.obstacles = state.obstacles.filter((obstacle) => obstacle.y < state.height + 80)
-  state.coins = state.coins.filter((coin) => !coin.collected && coin.y < state.height + 60)
   state.particles = state.particles.filter((particle) => particle.life > 0)
 }
 
 function checkCollisions() {
-  const playerX = laneX(Math.round(state.playerLane))
-  const playerY = state.playerY - state.jumpHeight
-  const playerHeight = state.slideTimer > 0 ? 34 : 58
-  const playerWidth = state.slideTimer > 0 ? 54 : 36
-
-  for (const coin of state.coins) {
-    const coinX = laneX(coin.lane)
-    if (Math.abs(coinX - playerX) < 34 && Math.abs(coin.y - playerY) < 42) {
-      coin.collected = true
-      game.coins += 1
-      addCombo(coinX, coin.y)
+  for (const bullet of state.bullets) {
+    for (const enemy of state.enemies) {
+      if (Math.hypot(bullet.x - enemy.x, bullet.y - enemy.y) < bullet.radius + enemy.radius) {
+        bullet.y = -999
+        enemy.health -= bullet.damage
+        addExplosion(bullet.x, bullet.y, '#facc15', 5)
+        if (enemy.health <= 0) {
+          game.score += enemy.kind === 'tank' ? 180 : enemy.kind === 'zigzag' ? 120 : 75
+          game.charge = Math.min(100, game.charge + 12)
+          state.shake = Math.max(state.shake, enemy.kind === 'tank' ? 8 : 4)
+          addExplosion(enemy.x, enemy.y, enemy.kind === 'tank' ? '#ef4444' : '#f97316', 24)
+          maybeDropPowerup(enemy.x, enemy.y)
+        }
+      }
     }
   }
 
-  for (const obstacle of state.obstacles) {
-    const obstacleX = laneX(obstacle.lane)
-    const xOverlap = Math.abs(obstacleX - playerX) < (obstacle.width + playerWidth) / 2 - 8
-    const yOverlap = Math.abs(obstacle.y - playerY) < (obstacle.height + playerHeight) / 2 - 10
-    const clearedByJump = obstacle.kind === 'low' && state.jumpHeight > 42
-    const clearedBySlide = obstacle.kind === 'high' && state.slideTimer > 0
-    if (xOverlap && yOverlap && !clearedByJump && !clearedBySlide) {
-      endGame()
-      return
+  state.enemies.forEach((enemy) => {
+    if (Math.hypot(enemy.x - state.player.x, enemy.y - state.player.y) < enemy.radius + state.player.radius) {
+      enemy.health = 0
+      damagePlayer()
     }
-  }
+  })
+  state.enemyBullets.forEach((bullet) => {
+    if (Math.hypot(bullet.x - state.player.x, bullet.y - state.player.y) < bullet.radius + state.player.radius) {
+      bullet.y = state.height + 999
+      damagePlayer()
+    }
+  })
+  state.powerups.forEach((powerup) => {
+    if (Math.hypot(powerup.x - state.player.x, powerup.y - state.player.y) < powerup.radius + state.player.radius) {
+      powerup.y = state.height + 999
+      if (powerup.kind === 'life') game.lives = Math.min(5, game.lives + 1)
+      else game.charge = 100
+      showMessage(powerup.kind === 'life' ? '+1 LIFE' : 'CHARGE READY')
+      addExplosion(powerup.x, powerup.y, '#22c55e', 18)
+    }
+  })
 }
 
-function drawRoad(ctx) {
-  const roadTop = state.height * 0.08
-  const roadBottom = state.height
-  const roadWidth = Math.min(state.width * 0.82, 560)
-  const left = state.width / 2 - roadWidth / 2
-
-  ctx.fillStyle = '#1f2937'
-  ctx.beginPath()
-  ctx.moveTo(left + roadWidth * 0.18, roadTop)
-  ctx.lineTo(left + roadWidth * 0.82, roadTop)
-  ctx.lineTo(left + roadWidth, roadBottom)
-  ctx.lineTo(left, roadBottom)
-  ctx.closePath()
-  ctx.fill()
-
-  ctx.strokeStyle = 'rgba(250, 204, 21, 0.55)'
-  ctx.lineWidth = 3
-  for (let i = 1; i < 3; i += 1) {
-    const x = left + (roadWidth / 3) * i
-    ctx.setLineDash([22, 18])
-    ctx.beginPath()
-    ctx.moveTo(x, roadTop)
-    ctx.lineTo(x, roadBottom)
-    ctx.stroke()
-  }
-  ctx.setLineDash([])
+function drawBackground(ctx) {
+  const gradient = ctx.createLinearGradient(0, 0, 0, state.height)
+  gradient.addColorStop(0, '#101827')
+  gradient.addColorStop(0.58, '#1f2a44')
+  gradient.addColorStop(1, '#101113')
+  ctx.fillStyle = gradient
+  ctx.fillRect(0, 0, state.width, state.height)
+  state.stars.forEach((star) => {
+    ctx.fillStyle = 'rgba(226, 232, 240, 0.76)'
+    ctx.fillRect(star.x, star.y, star.size, star.size * 2.4)
+  })
 }
 
 function drawPlayer(ctx) {
-  const x = laneX(state.playerLane)
-  const y = state.playerY - state.jumpHeight
-  const sliding = state.slideTimer > 0
-  const step = Math.sin(performance.now() / 110) * 6
-
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.28)'
-  ctx.beginPath()
-  ctx.ellipse(x, state.playerY + 34, 36, 10, 0, 0, Math.PI * 2)
-  ctx.fill()
-
-  ctx.strokeStyle = '#0f172a'
-  ctx.lineWidth = 5
-  ctx.lineCap = 'round'
-
-  if (sliding) {
-    ctx.fillStyle = '#38bdf8'
-    ctx.beginPath()
-    ctx.roundRect(x - 32, y - 18, 64, 26, 12)
-    ctx.fill()
-    ctx.fillStyle = '#f8fafc'
-    ctx.beginPath()
-    ctx.arc(x + 24, y - 24, 12, 0, Math.PI * 2)
-    ctx.fill()
-    return
-  }
-
-  ctx.strokeStyle = '#38bdf8'
-  ctx.beginPath()
-  ctx.moveTo(x - 15, y - 4)
-  ctx.lineTo(x - 28, y + 26 + step)
-  ctx.moveTo(x + 15, y - 4)
-  ctx.lineTo(x + 26, y + 26 - step)
-  ctx.moveTo(x - 10, y - 26)
-  ctx.lineTo(x - 30, y - 10)
-  ctx.moveTo(x + 10, y - 26)
-  ctx.lineTo(x + 30, y - 12)
-  ctx.stroke()
-
+  const blink = state.player.invulnerable > 0 && Math.floor(performance.now() / 90) % 2 === 0
+  if (blink) return
+  const { x, y } = state.player
   ctx.fillStyle = '#38bdf8'
   ctx.beginPath()
-  ctx.roundRect(x - 18, y - 36, 36, 44, 12)
+  ctx.moveTo(x, y - 28)
+  ctx.lineTo(x - 22, y + 22)
+  ctx.lineTo(x, y + 12)
+  ctx.lineTo(x + 22, y + 22)
+  ctx.closePath()
   ctx.fill()
-
   ctx.fillStyle = '#f8fafc'
   ctx.beginPath()
-  ctx.arc(x, y - 52, 14, 0, Math.PI * 2)
+  ctx.moveTo(x, y - 16)
+  ctx.lineTo(x - 8, y + 6)
+  ctx.lineTo(x + 8, y + 6)
+  ctx.closePath()
   ctx.fill()
-  ctx.fillStyle = '#0f172a'
-  ctx.fillRect(x - 7, y - 54, 14, 4)
 }
 
-function drawObstacle(ctx, obstacle) {
-  const x = laneX(obstacle.lane)
-  const y = obstacle.y
-
-  if (obstacle.type === 'gate') {
-    ctx.fillStyle = '#ef4444'
-    ctx.fillRect(x - 34, y - 42, 12, 78)
-    ctx.fillRect(x + 22, y - 42, 12, 78)
-    ctx.fillStyle = '#fca5a5'
-    ctx.fillRect(x - 34, y - 42, 68, 12)
-    return
-  }
-
-  if (obstacle.type === 'barrier') {
-    ctx.fillStyle = '#ef4444'
-    ctx.fillRect(x - 34, y - 18, 68, 38)
-    ctx.fillStyle = '#fef2f2'
-    ctx.fillRect(x - 26, y - 8, 52, 8)
-    return
-  }
-
-  if (obstacle.type === 'cone') {
-    ctx.fillStyle = '#f97316'
-    ctx.beginPath()
-    ctx.moveTo(x, y - 32)
-    ctx.lineTo(x - 28, y + 26)
-    ctx.lineTo(x + 28, y + 26)
-    ctx.closePath()
-    ctx.fill()
-    ctx.fillStyle = '#fed7aa'
-    ctx.fillRect(x - 18, y + 2, 36, 8)
-    return
-  }
-
-  ctx.fillStyle = '#a16207'
-  ctx.fillRect(x - 28, y - 26, 56, 52)
-  ctx.strokeStyle = '#fef3c7'
-  ctx.strokeRect(x - 20, y - 18, 40, 36)
-}
-
-function drawCoin(ctx, coin) {
-  const x = laneX(coin.lane)
-  ctx.fillStyle = '#facc15'
+function drawEnemy(ctx, enemy) {
+  ctx.save()
+  ctx.translate(enemy.x, enemy.y)
+  ctx.fillStyle = enemy.kind === 'tank' ? '#dc2626' : enemy.kind === 'zigzag' ? '#a855f7' : '#f97316'
   ctx.beginPath()
-  ctx.arc(x, coin.y, coin.radius, 0, Math.PI * 2)
+  ctx.moveTo(0, enemy.radius + 8)
+  ctx.lineTo(-enemy.radius, -enemy.radius * 0.55)
+  ctx.lineTo(0, -enemy.radius)
+  ctx.lineTo(enemy.radius, -enemy.radius * 0.55)
+  ctx.closePath()
   ctx.fill()
-  ctx.strokeStyle = '#fef3c7'
-  ctx.stroke()
+  ctx.fillStyle = '#111827'
+  ctx.fillRect(-enemy.radius * 0.55, -4, enemy.radius * 1.1, 8)
+  ctx.fillStyle = '#facc15'
+  ctx.fillRect(-enemy.radius * 0.7, enemy.radius + 9, enemy.radius * 1.4 * (enemy.health / enemy.maxHealth), 4)
+  ctx.restore()
+}
+
+function drawPowerup(ctx, powerup) {
+  ctx.fillStyle = powerup.kind === 'life' ? '#22c55e' : '#facc15'
+  ctx.beginPath()
+  ctx.arc(powerup.x, powerup.y, powerup.radius, 0, Math.PI * 2)
+  ctx.fill()
+}
+
+function drawProjectiles(ctx) {
+  state.bullets.forEach((bullet) => {
+    ctx.fillStyle = '#67e8f9'
+    ctx.fillRect(bullet.x - 3, bullet.y - 14, 6, 18)
+  })
+  state.enemyBullets.forEach((bullet) => {
+    ctx.fillStyle = '#fb7185'
+    ctx.beginPath()
+    ctx.arc(bullet.x, bullet.y, bullet.radius, 0, Math.PI * 2)
+    ctx.fill()
+  })
 }
 
 function drawParticles(ctx) {
@@ -385,35 +368,33 @@ function drawParticles(ctx) {
     ctx.globalAlpha = Math.max(0, particle.life)
     ctx.fillStyle = particle.color
     ctx.beginPath()
-    ctx.arc(particle.x, particle.y, 4, 0, Math.PI * 2)
+    ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2)
     ctx.fill()
   })
   ctx.globalAlpha = 1
 }
 
 function drawFeedback(ctx) {
-  if (game.combo > 1) {
-    ctx.fillStyle = '#facc15'
-    ctx.font = '800 18px Inter, sans-serif'
-    ctx.textAlign = 'right'
-    ctx.fillText('Combo ' + game.combo + '  x' + game.multiplier, state.width - 18, 34)
-  }
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.62)'
+  ctx.fillRect(18, state.height - 22, state.width - 36, 8)
+  ctx.fillStyle = '#facc15'
+  ctx.fillRect(18, state.height - 22, (state.width - 36) * (game.charge / 100), 8)
   if (game.message) {
     ctx.fillStyle = '#ffffff'
-    ctx.font = '800 28px Inter, sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText(game.message, state.width / 2, state.height * 0.18)
+    ctx.font = '800 28px Inter, sans-serif'
+    ctx.fillText(game.message, state.width / 2, state.height * 0.2)
   }
 }
 
 function drawOverlay(ctx) {
   if (game.status === 'running') return
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.72)'
+  ctx.fillStyle = 'rgba(8, 13, 24, 0.74)'
   ctx.fillRect(0, 0, state.width, state.height)
   ctx.fillStyle = '#ffffff'
-  ctx.font = '800 34px Inter, sans-serif'
   ctx.textAlign = 'center'
-  ctx.fillText(game.status === 'ready' ? 'Subway Runner' : 'Game Over', state.width / 2, state.height * 0.42)
+  ctx.font = '800 38px Inter, sans-serif'
+  ctx.fillText(game.status === 'ready' ? 'Neon Shooter' : 'Game Over', state.width / 2, state.height * 0.42)
   ctx.font = '600 16px Inter, sans-serif'
   ctx.fillText(instruction.value, state.width / 2, state.height * 0.5)
 }
@@ -421,19 +402,18 @@ function drawOverlay(ctx) {
 function render() {
   const ctx = state.ctx
   if (!ctx) return
-
+  const shakeX = state.shake ? (Math.random() - 0.5) * state.shake : 0
+  const shakeY = state.shake ? (Math.random() - 0.5) * state.shake : 0
   ctx.clearRect(0, 0, state.width, state.height)
-  const sky = ctx.createLinearGradient(0, 0, 0, state.height)
-  sky.addColorStop(0, '#0f172a')
-  sky.addColorStop(1, '#111827')
-  ctx.fillStyle = sky
-  ctx.fillRect(0, 0, state.width, state.height)
-
-  drawRoad(ctx)
-  state.coins.forEach((coin) => drawCoin(ctx, coin))
-  state.obstacles.forEach((obstacle) => drawObstacle(ctx, obstacle))
+  ctx.save()
+  ctx.translate(shakeX, shakeY)
+  drawBackground(ctx)
+  state.powerups.forEach((powerup) => drawPowerup(ctx, powerup))
+  state.enemies.forEach((enemy) => drawEnemy(ctx, enemy))
+  drawProjectiles(ctx)
   drawParticles(ctx)
   drawPlayer(ctx)
+  ctx.restore()
   drawFeedback(ctx)
   drawOverlay(ctx)
 }
@@ -447,48 +427,59 @@ function loop(time) {
 }
 
 function fitCanvas() {
-  const element = canvas.value
-  if (!element) return
-
-  const rect = element.getBoundingClientRect()
+  const el = canvas.value
+  if (!el) return
+  const rect = el.getBoundingClientRect()
   state.pixelRatio = Math.min(window.devicePixelRatio || 1, 2)
   state.width = rect.width
   state.height = rect.height
-  state.playerY = state.height - 110
-  element.width = Math.floor(rect.width * state.pixelRatio)
-  element.height = Math.floor(rect.height * state.pixelRatio)
-  state.ctx = element.getContext('2d')
+  el.width = Math.floor(rect.width * state.pixelRatio)
+  el.height = Math.floor(rect.height * state.pixelRatio)
+  state.ctx = el.getContext('2d')
   state.ctx.setTransform(state.pixelRatio, 0, 0, state.pixelRatio, 0, 0)
+  if (game.status !== 'running') {
+    state.player.x = state.width / 2
+    state.player.y = state.height - 95
+  }
+  createStars()
+}
+
+function setInput(key, pressed) {
+  const map = {
+    ArrowLeft: 'left', a: 'left', A: 'left',
+    ArrowRight: 'right', d: 'right', D: 'right',
+    ArrowUp: 'up', w: 'up', W: 'up',
+    ArrowDown: 'down', s: 'down', S: 'down',
+    ' ': 'fire',
+  }
+  const action = map[key]
+  if (!action) return false
+  input[action] = pressed
+  return true
 }
 
 function handleKeydown(event) {
-  if (event.key === 'ArrowLeft' || event.key === 'a') {
-    event.preventDefault()
-    moveLane(-1)
-  }
-  if (event.key === 'ArrowRight' || event.key === 'd') {
-    event.preventDefault()
-    moveLane(1)
-  }
-  if (event.key === ' ') {
-    event.preventDefault()
-    jump()
-  }
-  if (event.key === 'ArrowUp' || event.key === 'w') {
-    event.preventDefault()
-    jump()
-  }
-  if (event.key === 'ArrowDown' || event.key === 's') {
-    event.preventDefault()
-    slide()
-  }
+  if (!setInput(event.key, true)) return
+  event.preventDefault()
+  if (event.key === ' ') fireBullet()
+}
+
+function handleKeyup(event) {
+  if (!setInput(event.key, false)) return
+  event.preventDefault()
+}
+
+function press(action, pressed) {
+  input[action] = pressed
+  if (action === 'fire' && pressed) fireBullet()
 }
 
 onMounted(() => {
   fitCanvas()
-  resetGame()
+  resetWorld()
   window.addEventListener('resize', fitCanvas)
   window.addEventListener('keydown', handleKeydown)
+  window.addEventListener('keyup', handleKeyup)
   state.animationId = requestAnimationFrame(loop)
 })
 
@@ -496,39 +487,29 @@ onBeforeUnmount(() => {
   cancelAnimationFrame(state.animationId)
   window.removeEventListener('resize', fitCanvas)
   window.removeEventListener('keydown', handleKeydown)
+  window.removeEventListener('keyup', handleKeyup)
 })
 </script>
 
 <template>
   <main class="game-shell">
     <section class="hud" aria-label="Spielstand">
-      <div>
-        <span>Score</span>
-        <strong>{{ game.score }}</strong>
-      </div>
-      <div>
-        <span>Coins</span>
-        <strong>{{ game.coins }}</strong>
-      </div>
-      <div>
-        <span>Combo</span>
-        <strong>x{{ game.multiplier }}</strong>
-      </div>
-      <div>
-        <span>Best</span>
-        <strong>{{ game.best }}</strong>
-      </div>
+      <div><span>Score</span><strong>{{ game.score }}</strong></div>
+      <div><span>Lives</span><strong>{{ game.lives }}</strong></div>
+      <div><span>Wave</span><strong>{{ game.wave }}</strong></div>
+      <div><span>Best</span><strong>{{ game.best }}</strong></div>
     </section>
 
-    <button class="stage" type="button" @click="startGame" aria-label="Spiel starten">
-      <canvas ref="canvas" aria-label="Subway Runner"></canvas>
+    <button class="stage" type="button" @click="fireBullet" aria-label="Spiel starten oder schiessen">
+      <canvas ref="canvas" aria-label="Neon Shooter"></canvas>
     </button>
 
-    <section class="controls" aria-label="Steuerung">
-      <button type="button" @click="moveLane(-1)" aria-label="Nach links">&larr;</button>
-      <button type="button" @click="jump" aria-label="Springen">&uarr;</button>
-      <button type="button" @click="slide" aria-label="Rutschen">&darr;</button>
-      <button type="button" @click="moveLane(1)" aria-label="Nach rechts">&rarr;</button>
+    <section class="controls shooter-controls" aria-label="Steuerung">
+      <button type="button" @pointerdown="press('left', true)" @pointerup="press('left', false)" @pointerleave="press('left', false)" aria-label="Links">&larr;</button>
+      <button type="button" @pointerdown="press('up', true)" @pointerup="press('up', false)" @pointerleave="press('up', false)" aria-label="Hoch">&uarr;</button>
+      <button type="button" @pointerdown="press('down', true)" @pointerup="press('down', false)" @pointerleave="press('down', false)" aria-label="Runter">&darr;</button>
+      <button type="button" @pointerdown="press('right', true)" @pointerup="press('right', false)" @pointerleave="press('right', false)" aria-label="Rechts">&rarr;</button>
+      <button class="fire" type="button" @pointerdown="press('fire', true)" @pointerup="press('fire', false)" @pointerleave="press('fire', false)" aria-label="Schiessen">FIRE</button>
     </section>
 
     <p class="hint">{{ instruction }}</p>
