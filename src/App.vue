@@ -6,7 +6,10 @@ const game = reactive({
   status: 'ready',
   score: 0,
   coins: 0,
+  combo: 0,
+  multiplier: 1,
   best: Number(localStorage.getItem('runner-best') || 0),
+  message: '',
 })
 
 const lanes = [-1, 0, 1]
@@ -32,8 +35,11 @@ const state = {
   distance: 0,
   spawnTimer: 0,
   coinTimer: 0,
+  comboTimer: 0,
+  messageTimer: 0,
   obstacles: [],
   coins: [],
+  particles: [],
   animationId: 0,
   lastTime: 0,
 }
@@ -54,6 +60,9 @@ function laneX(laneIndex) {
 function resetGame() {
   game.score = 0
   game.coins = 0
+  game.combo = 0
+  game.multiplier = 1
+  game.message = ''
   state.playerLane = 1
   state.targetLane = 1
   state.jumpHeight = 0
@@ -63,8 +72,11 @@ function resetGame() {
   state.distance = 0
   state.spawnTimer = 0.9
   state.coinTimer = 0.45
+  state.comboTimer = 0
+  state.messageTimer = 0
   state.obstacles = []
   state.coins = []
+  state.particles = []
 }
 
 function startGame() {
@@ -127,14 +139,51 @@ function spawnCoinLine() {
   }
 }
 
+function showMessage(text, duration = 0.9) {
+  game.message = text
+  state.messageTimer = duration
+}
+
+function addParticles(x, y, color = '#facc15', amount = 10) {
+  for (let i = 0; i < amount; i += 1) {
+    const angle = Math.random() * Math.PI * 2
+    const speed = 60 + Math.random() * 160
+    state.particles.push({
+      x,
+      y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 0.5 + Math.random() * 0.35,
+      color,
+    })
+  }
+}
+
+function addCombo(x, y) {
+  game.combo += 1
+  game.multiplier = 1 + Math.min(4, Math.floor(game.combo / 5))
+  state.comboTimer = 2.2
+  addParticles(x, y, game.multiplier > 2 ? '#38bdf8' : '#facc15', 8 + game.multiplier * 2)
+  if (game.combo > 1 && game.combo % 5 === 0) {
+    showMessage('Combo x' + game.multiplier)
+  }
+}
+
 function update(delta) {
   if (game.status !== 'running') return
 
   state.distance += state.speed * delta
-  game.score = Math.floor(state.distance / 8) + game.coins * 25
-  state.speed = Math.min(420, state.speed + delta * 6)
+  game.score = Math.floor(state.distance / 8) + game.coins * 25 * game.multiplier
+  state.speed = Math.min(440, state.speed + delta * 7)
   state.playerLane += (state.targetLane - state.playerLane) * Math.min(1, delta * 12)
   state.slideTimer = Math.max(0, state.slideTimer - delta)
+  state.comboTimer = Math.max(0, state.comboTimer - delta)
+  state.messageTimer = Math.max(0, state.messageTimer - delta)
+  if (state.messageTimer === 0) game.message = ''
+  if (state.comboTimer === 0 && game.combo) {
+    game.combo = 0
+    game.multiplier = 1
+  }
   state.jumpHeight = Math.max(0, state.jumpHeight + state.jumpVelocity * delta)
   if (state.jumpHeight > 0 || state.jumpVelocity > 0) {
     state.jumpVelocity -= 1380 * delta
@@ -160,10 +209,17 @@ function update(delta) {
   state.coins.forEach((coin) => {
     coin.y += state.speed * delta
   })
+  state.particles.forEach((particle) => {
+    particle.life -= delta
+    particle.x += particle.vx * delta
+    particle.y += particle.vy * delta
+    particle.vy += 260 * delta
+  })
 
   checkCollisions()
   state.obstacles = state.obstacles.filter((obstacle) => obstacle.y < state.height + 80)
   state.coins = state.coins.filter((coin) => !coin.collected && coin.y < state.height + 60)
+  state.particles = state.particles.filter((particle) => particle.life > 0)
 }
 
 function checkCollisions() {
@@ -177,6 +233,7 @@ function checkCollisions() {
     if (Math.abs(coinX - playerX) < 34 && Math.abs(coin.y - playerY) < 42) {
       coin.collected = true
       game.coins += 1
+      addCombo(coinX, coin.y)
     }
   }
 
@@ -323,6 +380,32 @@ function drawCoin(ctx, coin) {
   ctx.stroke()
 }
 
+function drawParticles(ctx) {
+  state.particles.forEach((particle) => {
+    ctx.globalAlpha = Math.max(0, particle.life)
+    ctx.fillStyle = particle.color
+    ctx.beginPath()
+    ctx.arc(particle.x, particle.y, 4, 0, Math.PI * 2)
+    ctx.fill()
+  })
+  ctx.globalAlpha = 1
+}
+
+function drawFeedback(ctx) {
+  if (game.combo > 1) {
+    ctx.fillStyle = '#facc15'
+    ctx.font = '800 18px Inter, sans-serif'
+    ctx.textAlign = 'right'
+    ctx.fillText('Combo ' + game.combo + '  x' + game.multiplier, state.width - 18, 34)
+  }
+  if (game.message) {
+    ctx.fillStyle = '#ffffff'
+    ctx.font = '800 28px Inter, sans-serif'
+    ctx.textAlign = 'center'
+    ctx.fillText(game.message, state.width / 2, state.height * 0.18)
+  }
+}
+
 function drawOverlay(ctx) {
   if (game.status === 'running') return
   ctx.fillStyle = 'rgba(15, 23, 42, 0.72)'
@@ -349,7 +432,9 @@ function render() {
   drawRoad(ctx)
   state.coins.forEach((coin) => drawCoin(ctx, coin))
   state.obstacles.forEach((obstacle) => drawObstacle(ctx, obstacle))
+  drawParticles(ctx)
   drawPlayer(ctx)
+  drawFeedback(ctx)
   drawOverlay(ctx)
 }
 
@@ -424,6 +509,10 @@ onBeforeUnmount(() => {
       <div>
         <span>Coins</span>
         <strong>{{ game.coins }}</strong>
+      </div>
+      <div>
+        <span>Combo</span>
+        <strong>x{{ game.multiplier }}</strong>
       </div>
       <div>
         <span>Best</span>
