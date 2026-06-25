@@ -96,7 +96,7 @@ canvas {
 
 .controls {
   display: grid;
-  grid-template-columns: repeat(4, 64px);
+  grid-template-columns: repeat(4, 58px) 96px;
   justify-content: center;
   gap: 10px;
 }
@@ -111,6 +111,11 @@ canvas {
   background: linear-gradient(180deg, #334155, #111827);
   cursor: pointer;
   font-weight: 800;
+}
+
+.controls .fire {
+  color: #111827;
+  background: linear-gradient(180deg, #facc15, #f97316);
 }
 
 .controls button:active {
@@ -139,7 +144,7 @@ canvas {
   }
 
   .controls {
-    grid-template-columns: repeat(4, minmax(54px, 1fr));
+    grid-template-columns: repeat(5, minmax(46px, 1fr));
   }
 
   .stage {
