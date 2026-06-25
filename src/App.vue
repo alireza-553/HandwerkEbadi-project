@@ -8,6 +8,8 @@ const game = reactive({
   lives: 3,
   wave: 1,
   charge: 0,
+  online: 1,
+  multiplayer: import.meta.hot ? 'LAN' : 'Local',
   best: Number(localStorage.getItem('shooter-best') || 0),
   message: '',
 })
@@ -20,6 +22,10 @@ const state = {
   height: 0,
   pixelRatio: 1,
   player: { x: 0, y: 0, radius: 17, cooldown: 0, invulnerable: 0 },
+  playerId: localStorage.getItem('shooter-player-id') || '',
+  playerName: 'P' + Math.floor(100 + Math.random() * 900),
+  remotePlayers: new Map(),
+  networkTimer: 0,
   bullets: [],
   enemies: [],
   enemyBullets: [],
@@ -47,6 +53,65 @@ function clamp(value, min, max) {
 function showMessage(text, duration = 1) {
   game.message = text
   state.messageTimer = duration
+}
+
+function ensurePlayerId() {
+  if (state.playerId) return
+  state.playerId = crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())
+  localStorage.setItem('shooter-player-id', state.playerId)
+}
+
+function localPlayerPayload() {
+  return {
+    id: state.playerId,
+    name: state.playerName,
+    x: state.width ? state.player.x / state.width : 0.5,
+    y: state.height ? state.player.y / state.height : 0.85,
+    lives: game.lives,
+    score: game.score,
+    wave: game.wave,
+    status: game.status,
+  }
+}
+
+function sendPlayerUpdate(force = false) {
+  if (!import.meta.hot || !state.playerId || (!force && state.networkTimer > 0)) return
+  state.networkTimer = 0.06
+  import.meta.hot.send('shooter:update', localPlayerPayload())
+}
+
+function setupMultiplayer() {
+  ensurePlayerId()
+  if (!import.meta.hot) {
+    game.multiplayer = 'Local'
+    return
+  }
+
+  game.multiplayer = 'LAN'
+  import.meta.hot.on('shooter:players', (players) => {
+    const nextPlayers = new Map()
+    players.forEach((player) => {
+      if (player.id !== state.playerId) nextPlayers.set(player.id, player)
+    })
+    state.remotePlayers = nextPlayers
+    game.online = nextPlayers.size + 1
+  })
+
+  import.meta.hot.on('shooter:shot', (shot) => {
+    if (shot.id === state.playerId) return
+    state.bullets.push({
+      x: shot.x * state.width,
+      y: shot.y * state.height,
+      vx: shot.vx * state.width,
+      vy: shot.vy * state.height,
+      radius: 5,
+      damage: 1,
+      remote: true,
+    })
+  })
+
+  import.meta.hot.send('shooter:join', localPlayerPayload())
+  sendPlayerUpdate(true)
 }
 
 function resetWorld() {
@@ -79,6 +144,7 @@ function endGame() {
   game.status = 'over'
   game.best = Math.max(game.best, game.score)
   localStorage.setItem('shooter-best', String(game.best))
+  sendPlayerUpdate(true)
 }
 
 function createStars() {
@@ -125,6 +191,15 @@ function fireBullet() {
       radius: 5,
       damage: game.charge >= 100 ? 2 : 1,
     })
+    if (import.meta.hot) {
+      import.meta.hot.send('shooter:shot', {
+        id: state.playerId,
+        x: (state.player.x + offset) / state.width,
+        y: (state.player.y - 24) / state.height,
+        vx: (offset * 0.8) / state.width,
+        vy: -570 / state.height,
+      })
+    }
   })
 
   state.player.cooldown = game.charge >= 100 ? 0.12 : 0.18
@@ -176,6 +251,7 @@ function update(delta) {
 
   state.player.cooldown = Math.max(0, state.player.cooldown - delta)
   state.player.invulnerable = Math.max(0, state.player.invulnerable - delta)
+  state.networkTimer = Math.max(0, state.networkTimer - delta)
   state.shake = Math.max(0, state.shake - 24 * delta)
   state.messageTimer = Math.max(0, state.messageTimer - delta)
   if (state.messageTimer === 0) game.message = ''
@@ -188,6 +264,7 @@ function update(delta) {
   state.player.x = clamp(state.player.x + (moveX / length) * speed * delta, 25, state.width - 25)
   state.player.y = clamp(state.player.y + (moveY / length) * speed * delta, state.height * 0.45, state.height - 42)
   if (input.fire) fireBullet()
+  sendPlayerUpdate()
 
   state.stars.forEach((star) => {
     star.y += star.speed * delta
@@ -325,6 +402,26 @@ function drawPlayer(ctx) {
   ctx.fill()
 }
 
+function drawRemotePlayers(ctx) {
+  for (const player of state.remotePlayers.values()) {
+    if (player.status === 'over') continue
+    const x = player.x * state.width
+    const y = player.y * state.height
+    ctx.fillStyle = '#22c55e'
+    ctx.beginPath()
+    ctx.moveTo(x, y - 24)
+    ctx.lineTo(x - 19, y + 19)
+    ctx.lineTo(x, y + 9)
+    ctx.lineTo(x + 19, y + 19)
+    ctx.closePath()
+    ctx.fill()
+    ctx.fillStyle = '#dcfce7'
+    ctx.font = '700 12px Inter, sans-serif'
+    ctx.textAlign = 'center'
+    ctx.fillText(player.name || 'Ally', x, y - 34)
+  }
+}
+
 function drawEnemy(ctx, enemy) {
   ctx.save()
   ctx.translate(enemy.x, enemy.y)
@@ -412,6 +509,7 @@ function render() {
   state.enemies.forEach((enemy) => drawEnemy(ctx, enemy))
   drawProjectiles(ctx)
   drawParticles(ctx)
+  drawRemotePlayers(ctx)
   drawPlayer(ctx)
   ctx.restore()
   drawFeedback(ctx)
@@ -477,6 +575,7 @@ function press(action, pressed) {
 onMounted(() => {
   fitCanvas()
   resetWorld()
+  setupMultiplayer()
   window.addEventListener('resize', fitCanvas)
   window.addEventListener('keydown', handleKeydown)
   window.addEventListener('keyup', handleKeyup)
@@ -484,6 +583,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  if (import.meta.hot) import.meta.hot.send('shooter:leave', { id: state.playerId })
   cancelAnimationFrame(state.animationId)
   window.removeEventListener('resize', fitCanvas)
   window.removeEventListener('keydown', handleKeydown)
@@ -497,6 +597,8 @@ onBeforeUnmount(() => {
       <div><span>Score</span><strong>{{ game.score }}</strong></div>
       <div><span>Lives</span><strong>{{ game.lives }}</strong></div>
       <div><span>Wave</span><strong>{{ game.wave }}</strong></div>
+      <div><span>Online</span><strong>{{ game.online }}</strong></div>
+      <div><span>Mode</span><strong>{{ game.multiplayer }}</strong></div>
       <div><span>Best</span><strong>{{ game.best }}</strong></div>
     </section>
 
