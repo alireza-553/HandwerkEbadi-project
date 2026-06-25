@@ -3,6 +3,7 @@ import vue from '@vitejs/plugin-vue'
 
 function lanMultiplayerRelay() {
   const players = new Map()
+  const stalePlayerMs = 2500
   let hostId = ''
 
   function electHost(server) {
@@ -30,6 +31,11 @@ function lanMultiplayerRelay() {
         broadcastPlayers(server)
       })
 
+      server.ws.on('shooter:player', (player) => {
+        players.set(player.id, { ...player, lastSeen: Date.now() })
+        server.ws.send('shooter:player', players.get(player.id))
+      })
+
       server.ws.on('shooter:shot', (shot) => {
         server.ws.send('shooter:shot', shot)
       })
@@ -48,14 +54,14 @@ function lanMultiplayerRelay() {
         const now = Date.now()
         let changed = false
         for (const [id, player] of players) {
-          if (now - player.lastSeen > 4000) {
+          if (now - player.lastSeen > stalePlayerMs) {
             players.delete(id)
             if (id === hostId) hostId = ''
             changed = true
           }
         }
         if (changed) broadcastPlayers(server)
-      }, 1500)
+      }, 900)
     },
   }
 }

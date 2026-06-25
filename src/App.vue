@@ -16,6 +16,8 @@ const game = reactive({
 })
 
 const input = { up: false, down: false, left: false, right: false, fire: false }
+const NETWORK_SEND_INTERVAL = 0.025
+const WORLD_SYNC_INTERVAL = 0.04
 
 const state = {
   ctx: null,
@@ -78,8 +80,8 @@ function localPlayerPayload() {
 
 function sendPlayerUpdate(force = false) {
   if (!import.meta.hot || !state.playerId || (!force && state.networkTimer > 0)) return
-  state.networkTimer = 0.06
-  import.meta.hot.send('shooter:update', localPlayerPayload())
+  state.networkTimer = NETWORK_SEND_INTERVAL
+  import.meta.hot.send('shooter:player', localPlayerPayload())
 }
 
 function normalizeEntity(entity) {
@@ -116,7 +118,7 @@ function hostPayload() {
 
 function sendWorldUpdate(force = false) {
   if (!import.meta.hot || !game.host || (!force && state.worldTimer > 0)) return
-  state.worldTimer = 0.08
+  state.worldTimer = WORLD_SYNC_INTERVAL
   import.meta.hot.send('shooter:world', hostPayload())
 }
 
@@ -145,6 +147,12 @@ function setupMultiplayer() {
     })
     state.remotePlayers = nextPlayers
     game.online = nextPlayers.size + 1
+  })
+
+  import.meta.hot.on('shooter:player', (player) => {
+    if (!player || player.id === state.playerId) return
+    state.remotePlayers.set(player.id, player)
+    game.online = state.remotePlayers.size + 1
   })
 
   import.meta.hot.on('shooter:shot', (shot) => {
