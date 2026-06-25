@@ -1,113 +1,319 @@
 <script setup>
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 
 const canvas = ref(null)
-const statusText = ref('Canvas shell bereit')
+const game = reactive({
+  status: 'ready',
+  score: 0,
+  coins: 0,
+  best: Number(localStorage.getItem('runner-best') || 0),
+})
 
-let ctx = null
-let frameId = 0
-let resizeObserver = null
+const lanes = [-1, 0, 1]
+const input = {
+  left: false,
+  right: false,
+}
 
-function resizeCanvas() {
-  const element = canvas.value
-  if (!element || !ctx) return
+const state = {
+  ctx: null,
+  width: 0,
+  height: 0,
+  pixelRatio: 1,
+  playerLane: 1,
+  targetLane: 1,
+  playerY: 0,
+  speed: 240,
+  distance: 0,
+  spawnTimer: 0,
+  coinTimer: 0,
+  obstacles: [],
+  coins: [],
+  animationId: 0,
+  lastTime: 0,
+}
 
-  const ratio = Math.min(window.devicePixelRatio || 1, 2)
-  const rect = element.getBoundingClientRect()
+const instruction = computed(() => {
+  if (game.status === 'ready') return 'Leertaste oder Tippen startet'
+  if (game.status === 'over') return 'Game Over - Leertaste startet neu'
+  return 'Pfeiltasten oder Buttons wechseln die Spur'
+})
 
-  element.width = Math.max(1, Math.floor(rect.width * ratio))
-  element.height = Math.max(1, Math.floor(rect.height * ratio))
-  ctx.setTransform(ratio, 0, 0, ratio, 0, 0)
+function laneX(laneIndex) {
+  const roadWidth = Math.min(state.width * 0.78, 520)
+  const center = state.width / 2
+  const gap = roadWidth / 3
+  return center + lanes[laneIndex] * gap
+}
+
+function resetGame() {
+  game.score = 0
+  game.coins = 0
+  state.playerLane = 1
+  state.targetLane = 1
+  state.speed = 240
+  state.distance = 0
+  state.spawnTimer = 0.9
+  state.coinTimer = 0.45
+  state.obstacles = []
+  state.coins = []
+}
+
+function startGame() {
+  resetGame()
+  game.status = 'running'
+}
+
+function endGame() {
+  game.status = 'over'
+  game.best = Math.max(game.best, game.score)
+  localStorage.setItem('runner-best', String(game.best))
+}
+
+function moveLane(direction) {
+  if (game.status !== 'running') {
+    startGame()
+    return
+  }
+  state.targetLane = Math.max(0, Math.min(2, state.targetLane + direction))
+}
+
+function spawnObstacle() {
+  state.obstacles.push({
+    lane: Math.floor(Math.random() * 3),
+    y: -80,
+    width: 54,
+    height: 54,
+  })
+}
+
+function spawnCoinLine() {
+  const lane = Math.floor(Math.random() * 3)
+  for (let i = 0; i < 4; i += 1) {
+    state.coins.push({ lane, y: -80 - i * 48, radius: 12 })
+  }
+}
+
+function update(delta) {
+  if (game.status !== 'running') return
+
+  state.distance += state.speed * delta
+  game.score = Math.floor(state.distance / 8) + game.coins * 25
+  state.speed = Math.min(420, state.speed + delta * 6)
+  state.playerLane += (state.targetLane - state.playerLane) * Math.min(1, delta * 12)
+
+  state.spawnTimer -= delta
+  state.coinTimer -= delta
+  if (state.spawnTimer <= 0) {
+    spawnObstacle()
+    state.spawnTimer = Math.max(0.55, 1.25 - state.speed / 520)
+  }
+  if (state.coinTimer <= 0) {
+    spawnCoinLine()
+    state.coinTimer = 1.15
+  }
+
+  state.obstacles.forEach((obstacle) => {
+    obstacle.y += state.speed * delta
+  })
+  state.coins.forEach((coin) => {
+    coin.y += state.speed * delta
+  })
+
+  checkCollisions()
+  state.obstacles = state.obstacles.filter((obstacle) => obstacle.y < state.height + 80)
+  state.coins = state.coins.filter((coin) => !coin.collected && coin.y < state.height + 60)
+}
+
+function checkCollisions() {
+  const playerX = laneX(Math.round(state.playerLane))
+  const playerY = state.playerY
+
+  for (const coin of state.coins) {
+    const coinX = laneX(coin.lane)
+    if (Math.abs(coinX - playerX) < 34 && Math.abs(coin.y - playerY) < 38) {
+      coin.collected = true
+      game.coins += 1
+    }
+  }
+
+  for (const obstacle of state.obstacles) {
+    const obstacleX = laneX(obstacle.lane)
+    if (Math.abs(obstacleX - playerX) < 44 && Math.abs(obstacle.y - playerY) < 46) {
+      endGame()
+      return
+    }
+  }
+}
+
+function drawRoad(ctx) {
+  const roadTop = state.height * 0.08
+  const roadBottom = state.height
+  const roadWidth = Math.min(state.width * 0.82, 560)
+  const left = state.width / 2 - roadWidth / 2
+
+  ctx.fillStyle = '#1f2937'
+  ctx.beginPath()
+  ctx.moveTo(left + roadWidth * 0.18, roadTop)
+  ctx.lineTo(left + roadWidth * 0.82, roadTop)
+  ctx.lineTo(left + roadWidth, roadBottom)
+  ctx.lineTo(left, roadBottom)
+  ctx.closePath()
+  ctx.fill()
+
+  ctx.strokeStyle = 'rgba(250, 204, 21, 0.55)'
+  ctx.lineWidth = 3
+  for (let i = 1; i < 3; i += 1) {
+    const x = left + (roadWidth / 3) * i
+    ctx.setLineDash([22, 18])
+    ctx.beginPath()
+    ctx.moveTo(x, roadTop)
+    ctx.lineTo(x, roadBottom)
+    ctx.stroke()
+  }
+  ctx.setLineDash([])
+}
+
+function drawPlayer(ctx) {
+  const x = laneX(state.playerLane)
+  const y = state.playerY
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.28)'
+  ctx.beginPath()
+  ctx.ellipse(x, y + 34, 34, 10, 0, 0, Math.PI * 2)
+  ctx.fill()
+
+  ctx.fillStyle = '#38bdf8'
+  ctx.fillRect(x - 18, y - 34, 36, 58)
+  ctx.fillStyle = '#f8fafc'
+  ctx.fillRect(x - 12, y - 50, 24, 22)
+}
+
+function drawObstacle(ctx, obstacle) {
+  const x = laneX(obstacle.lane)
+  ctx.fillStyle = '#f97316'
+  ctx.fillRect(x - obstacle.width / 2, obstacle.y - obstacle.height / 2, obstacle.width, obstacle.height)
+}
+
+function drawCoin(ctx, coin) {
+  const x = laneX(coin.lane)
+  ctx.fillStyle = '#facc15'
+  ctx.beginPath()
+  ctx.arc(x, coin.y, coin.radius, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.strokeStyle = '#fef3c7'
+  ctx.stroke()
+}
+
+function drawOverlay(ctx) {
+  if (game.status === 'running') return
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.72)'
+  ctx.fillRect(0, 0, state.width, state.height)
+  ctx.fillStyle = '#ffffff'
+  ctx.font = '800 34px Inter, sans-serif'
+  ctx.textAlign = 'center'
+  ctx.fillText(game.status === 'ready' ? 'Subway Runner' : 'Game Over', state.width / 2, state.height * 0.42)
+  ctx.font = '600 16px Inter, sans-serif'
+  ctx.fillText(instruction.value, state.width / 2, state.height * 0.5)
 }
 
 function render() {
-  const element = canvas.value
-  if (!element || !ctx) return
+  const ctx = state.ctx
+  if (!ctx) return
 
-  const width = element.clientWidth
-  const height = element.clientHeight
-  const gradient = ctx.createLinearGradient(0, 0, 0, height)
-  gradient.addColorStop(0, '#0f172a')
-  gradient.addColorStop(0.55, '#172554')
-  gradient.addColorStop(1, '#111827')
+  ctx.clearRect(0, 0, state.width, state.height)
+  const sky = ctx.createLinearGradient(0, 0, 0, state.height)
+  sky.addColorStop(0, '#0f172a')
+  sky.addColorStop(1, '#111827')
+  ctx.fillStyle = sky
+  ctx.fillRect(0, 0, state.width, state.height)
 
-  ctx.clearRect(0, 0, width, height)
-  ctx.fillStyle = gradient
-  ctx.fillRect(0, 0, width, height)
-
-  ctx.strokeStyle = 'rgba(125, 211, 252, 0.22)'
-  ctx.lineWidth = 2
-  for (let x = 0; x < width; x += 80) {
-    ctx.beginPath()
-    ctx.moveTo(x, 0)
-    ctx.lineTo(x + width * 0.18, height)
-    ctx.stroke()
-  }
-
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.68)'
-  ctx.beginPath()
-  ctx.roundRect(width * 0.18, height * 0.22, width * 0.64, height * 0.42, 18)
-  ctx.fill()
-
-  ctx.strokeStyle = 'rgba(250, 204, 21, 0.6)'
-  ctx.strokeRect(width * 0.18, height * 0.22, width * 0.64, height * 0.42)
-
-  ctx.fillStyle = '#f8fafc'
-  ctx.font = '800 30px Inter, system-ui, sans-serif'
-  ctx.textAlign = 'center'
-  ctx.fillText('Handwerk Ebadi', width / 2, height * 0.42)
-
-  ctx.fillStyle = 'rgba(226, 232, 240, 0.78)'
-  ctx.font = '600 16px Inter, system-ui, sans-serif'
-  ctx.fillText('Canvas-Spiel-Shell', width / 2, height * 0.49)
-
-  frameId = requestAnimationFrame(render)
+  drawRoad(ctx)
+  state.coins.forEach((coin) => drawCoin(ctx, coin))
+  state.obstacles.forEach((obstacle) => drawObstacle(ctx, obstacle))
+  drawPlayer(ctx)
+  drawOverlay(ctx)
 }
 
-onMounted(() => {
+function loop(time) {
+  const delta = Math.min((time - state.lastTime) / 1000 || 0, 0.035)
+  state.lastTime = time
+  update(delta)
+  render()
+  state.animationId = requestAnimationFrame(loop)
+}
+
+function fitCanvas() {
   const element = canvas.value
   if (!element) return
 
-  ctx = element.getContext('2d')
-  if (!ctx) return
+  const rect = element.getBoundingClientRect()
+  state.pixelRatio = Math.min(window.devicePixelRatio || 1, 2)
+  state.width = rect.width
+  state.height = rect.height
+  state.playerY = state.height - 110
+  element.width = Math.floor(rect.width * state.pixelRatio)
+  element.height = Math.floor(rect.height * state.pixelRatio)
+  state.ctx = element.getContext('2d')
+  state.ctx.setTransform(state.pixelRatio, 0, 0, state.pixelRatio, 0, 0)
+}
 
-  resizeCanvas()
-  resizeObserver = new ResizeObserver(resizeCanvas)
-  resizeObserver.observe(element)
-  window.addEventListener('resize', resizeCanvas)
-  render()
+function handleKeydown(event) {
+  if (event.key === 'ArrowLeft' || event.key === 'a') {
+    event.preventDefault()
+    moveLane(-1)
+  }
+  if (event.key === 'ArrowRight' || event.key === 'd') {
+    event.preventDefault()
+    moveLane(1)
+  }
+  if (event.key === ' ') {
+    event.preventDefault()
+    startGame()
+  }
+}
+
+onMounted(() => {
+  fitCanvas()
+  resetGame()
+  window.addEventListener('resize', fitCanvas)
+  window.addEventListener('keydown', handleKeydown)
+  state.animationId = requestAnimationFrame(loop)
 })
 
 onBeforeUnmount(() => {
-  cancelAnimationFrame(frameId)
-  window.removeEventListener('resize', resizeCanvas)
-  resizeObserver?.disconnect()
+  cancelAnimationFrame(state.animationId)
+  window.removeEventListener('resize', fitCanvas)
+  window.removeEventListener('keydown', handleKeydown)
 })
 </script>
 
 <template>
   <main class="game-shell">
-    <section class="hud" aria-label="Spielstatus">
+    <section class="hud" aria-label="Spielstand">
       <div>
-        <span>Spiel</span>
-        <strong>Handwerk Ebadi</strong>
+        <span>Score</span>
+        <strong>{{ game.score }}</strong>
       </div>
-      <p>{{ statusText }}</p>
+      <div>
+        <span>Coins</span>
+        <strong>{{ game.coins }}</strong>
+      </div>
+      <div>
+        <span>Best</span>
+        <strong>{{ game.best }}</strong>
+      </div>
     </section>
 
-    <section class="stage" aria-label="Spielbereich">
-      <canvas ref="canvas" aria-label="Canvas-Spielbereich"></canvas>
-    </section>
+    <button class="stage" type="button" @click="startGame" aria-label="Spiel starten">
+      <canvas ref="canvas" aria-label="Subway Runner"></canvas>
+    </button>
 
     <section class="controls" aria-label="Steuerung">
-      <div>
-        <span>Tastatur</span>
-        <strong>Pfeiltasten, Leertaste</strong>
-      </div>
-      <div>
-        <span>Mobil</span>
-        <strong>Touch-Steuerung folgt</strong>
-      </div>
+      <button type="button" @click="moveLane(-1)" aria-label="Nach links">&larr;</button>
+      <button type="button" @click="startGame" aria-label="Start">START</button>
+      <button type="button" @click="moveLane(1)" aria-label="Nach rechts">&rarr;</button>
     </section>
+
+    <p class="hint">{{ instruction }}</p>
   </main>
 </template>
