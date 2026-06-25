@@ -96,7 +96,7 @@ canvas {
 
 .controls {
   display: grid;
-  grid-template-columns: 64px 112px 64px;
+  grid-template-columns: repeat(4, 64px);
   justify-content: center;
   gap: 10px;
 }
@@ -139,7 +139,7 @@ canvas {
   }
 
   .controls {
-    grid-template-columns: repeat(3, minmax(64px, 1fr));
+    grid-template-columns: repeat(4, minmax(54px, 1fr));
   }
 
   .stage {

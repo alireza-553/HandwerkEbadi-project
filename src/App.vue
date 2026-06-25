@@ -13,6 +13,8 @@ const lanes = [-1, 0, 1]
 const input = {
   left: false,
   right: false,
+  jump: false,
+  slide: false,
 }
 
 const state = {
@@ -23,6 +25,9 @@ const state = {
   playerLane: 1,
   targetLane: 1,
   playerY: 0,
+  jumpHeight: 0,
+  jumpVelocity: 0,
+  slideTimer: 0,
   speed: 240,
   distance: 0,
   spawnTimer: 0,
@@ -36,7 +41,7 @@ const state = {
 const instruction = computed(() => {
   if (game.status === 'ready') return 'Leertaste oder Tippen startet'
   if (game.status === 'over') return 'Game Over - Leertaste startet neu'
-  return 'Pfeiltasten oder Buttons wechseln die Spur'
+  return 'Links/Rechts wechseln, Hoch springt, Runter rutscht'
 })
 
 function laneX(laneIndex) {
@@ -51,6 +56,9 @@ function resetGame() {
   game.coins = 0
   state.playerLane = 1
   state.targetLane = 1
+  state.jumpHeight = 0
+  state.jumpVelocity = 0
+  state.slideTimer = 0
   state.speed = 240
   state.distance = 0
   state.spawnTimer = 0.9
@@ -78,12 +86,32 @@ function moveLane(direction) {
   state.targetLane = Math.max(0, Math.min(2, state.targetLane + direction))
 }
 
+function jump() {
+  if (game.status !== 'running') {
+    startGame()
+    return
+  }
+  if (state.jumpHeight > 2 || state.slideTimer > 0) return
+  state.jumpVelocity = 540
+}
+
+function slide() {
+  if (game.status !== 'running') {
+    startGame()
+    return
+  }
+  if (state.jumpHeight > 8) return
+  state.slideTimer = 0.55
+}
+
 function spawnObstacle() {
+  const kind = Math.random() > 0.56 ? 'high' : 'low'
   state.obstacles.push({
+    kind,
     lane: Math.floor(Math.random() * 3),
     y: -80,
     width: 54,
-    height: 54,
+    height: kind === 'high' ? 70 : 44,
   })
 }
 
@@ -101,6 +129,14 @@ function update(delta) {
   game.score = Math.floor(state.distance / 8) + game.coins * 25
   state.speed = Math.min(420, state.speed + delta * 6)
   state.playerLane += (state.targetLane - state.playerLane) * Math.min(1, delta * 12)
+  state.slideTimer = Math.max(0, state.slideTimer - delta)
+  state.jumpHeight = Math.max(0, state.jumpHeight + state.jumpVelocity * delta)
+  if (state.jumpHeight > 0 || state.jumpVelocity > 0) {
+    state.jumpVelocity -= 1380 * delta
+  }
+  if (state.jumpHeight === 0 && state.jumpVelocity < 0) {
+    state.jumpVelocity = 0
+  }
 
   state.spawnTimer -= delta
   state.coinTimer -= delta
@@ -127,11 +163,13 @@ function update(delta) {
 
 function checkCollisions() {
   const playerX = laneX(Math.round(state.playerLane))
-  const playerY = state.playerY
+  const playerY = state.playerY - state.jumpHeight
+  const playerHeight = state.slideTimer > 0 ? 34 : 58
+  const playerWidth = state.slideTimer > 0 ? 54 : 36
 
   for (const coin of state.coins) {
     const coinX = laneX(coin.lane)
-    if (Math.abs(coinX - playerX) < 34 && Math.abs(coin.y - playerY) < 38) {
+    if (Math.abs(coinX - playerX) < 34 && Math.abs(coin.y - playerY) < 42) {
       coin.collected = true
       game.coins += 1
     }
@@ -139,7 +177,11 @@ function checkCollisions() {
 
   for (const obstacle of state.obstacles) {
     const obstacleX = laneX(obstacle.lane)
-    if (Math.abs(obstacleX - playerX) < 44 && Math.abs(obstacle.y - playerY) < 46) {
+    const xOverlap = Math.abs(obstacleX - playerX) < (obstacle.width + playerWidth) / 2 - 8
+    const yOverlap = Math.abs(obstacle.y - playerY) < (obstacle.height + playerHeight) / 2 - 10
+    const clearedByJump = obstacle.kind === 'low' && state.jumpHeight > 42
+    const clearedBySlide = obstacle.kind === 'high' && state.slideTimer > 0
+    if (xOverlap && yOverlap && !clearedByJump && !clearedBySlide) {
       endGame()
       return
     }
@@ -176,22 +218,27 @@ function drawRoad(ctx) {
 
 function drawPlayer(ctx) {
   const x = laneX(state.playerLane)
-  const y = state.playerY
+  const y = state.playerY - state.jumpHeight
+  const sliding = state.slideTimer > 0
   ctx.fillStyle = 'rgba(0, 0, 0, 0.28)'
   ctx.beginPath()
   ctx.ellipse(x, y + 34, 34, 10, 0, 0, Math.PI * 2)
   ctx.fill()
 
   ctx.fillStyle = '#38bdf8'
-  ctx.fillRect(x - 18, y - 34, 36, 58)
+  ctx.fillRect(x - (sliding ? 28 : 18), y - (sliding ? 12 : 34), sliding ? 56 : 36, sliding ? 30 : 58)
   ctx.fillStyle = '#f8fafc'
-  ctx.fillRect(x - 12, y - 50, 24, 22)
+  ctx.fillRect(x - 12, y - (sliding ? 28 : 50), 24, 22)
 }
 
 function drawObstacle(ctx, obstacle) {
   const x = laneX(obstacle.lane)
-  ctx.fillStyle = '#f97316'
+  ctx.fillStyle = obstacle.kind === 'high' ? '#ef4444' : '#f97316'
   ctx.fillRect(x - obstacle.width / 2, obstacle.y - obstacle.height / 2, obstacle.width, obstacle.height)
+  ctx.fillStyle = '#111827'
+  ctx.font = '800 12px Inter, sans-serif'
+  ctx.textAlign = 'center'
+  ctx.fillText(obstacle.kind === 'high' ? 'SLIDE' : 'JUMP', x, obstacle.y + 4)
 }
 
 function drawCoin(ctx, coin) {
@@ -268,7 +315,15 @@ function handleKeydown(event) {
   }
   if (event.key === ' ') {
     event.preventDefault()
-    startGame()
+    jump()
+  }
+  if (event.key === 'ArrowUp' || event.key === 'w') {
+    event.preventDefault()
+    jump()
+  }
+  if (event.key === 'ArrowDown' || event.key === 's') {
+    event.preventDefault()
+    slide()
   }
 }
 
@@ -310,7 +365,8 @@ onBeforeUnmount(() => {
 
     <section class="controls" aria-label="Steuerung">
       <button type="button" @click="moveLane(-1)" aria-label="Nach links">&larr;</button>
-      <button type="button" @click="startGame" aria-label="Start">START</button>
+      <button type="button" @click="jump" aria-label="Springen">&uarr;</button>
+      <button type="button" @click="slide" aria-label="Rutschen">&darr;</button>
       <button type="button" @click="moveLane(1)" aria-label="Nach rechts">&rarr;</button>
     </section>
 
