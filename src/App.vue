@@ -10,6 +10,7 @@ const game = reactive({
   charge: 0,
   online: 1,
   multiplayer: import.meta.hot ? 'LAN' : 'Local',
+  host: false,
   best: Number(localStorage.getItem('shooter-best') || 0),
   message: '',
 })
@@ -26,6 +27,7 @@ const state = {
   playerName: 'P' + Math.floor(100 + Math.random() * 900),
   remotePlayers: new Map(),
   networkTimer: 0,
+  worldTimer: 0,
   bullets: [],
   enemies: [],
   enemyBullets: [],
@@ -80,6 +82,54 @@ function sendPlayerUpdate(force = false) {
   import.meta.hot.send('shooter:update', localPlayerPayload())
 }
 
+function normalizeEntity(entity) {
+  return {
+    ...entity,
+    x: state.width ? entity.x / state.width : entity.x,
+    y: state.height ? entity.y / state.height : entity.y,
+    vx: state.width && entity.vx !== undefined ? entity.vx / state.width : entity.vx,
+    vy: state.height && entity.vy !== undefined ? entity.vy / state.height : entity.vy,
+  }
+}
+
+function denormalizeEntity(entity) {
+  return {
+    ...entity,
+    x: entity.x * state.width,
+    y: entity.y * state.height,
+    vx: entity.vx !== undefined ? entity.vx * state.width : entity.vx,
+    vy: entity.vy !== undefined ? entity.vy * state.height : entity.vy,
+  }
+}
+
+function hostPayload() {
+  return {
+    hostId: state.playerId,
+    wave: game.wave,
+    enemies: state.enemies.map(normalizeEntity),
+    enemyBullets: state.enemyBullets.map(normalizeEntity),
+    powerups: state.powerups.map(normalizeEntity),
+    spawnTimer: state.spawnTimer,
+    waveTimer: state.waveTimer,
+  }
+}
+
+function sendWorldUpdate(force = false) {
+  if (!import.meta.hot || !game.host || (!force && state.worldTimer > 0)) return
+  state.worldTimer = 0.08
+  import.meta.hot.send('shooter:world', hostPayload())
+}
+
+function applyWorld(world) {
+  if (!world || world.hostId === state.playerId) return
+  game.wave = world.wave
+  state.enemies = (world.enemies || []).map(denormalizeEntity)
+  state.enemyBullets = (world.enemyBullets || []).map(denormalizeEntity)
+  state.powerups = (world.powerups || []).map(denormalizeEntity)
+  state.spawnTimer = world.spawnTimer || 0
+  state.waveTimer = world.waveTimer || 0
+}
+
 function setupMultiplayer() {
   ensurePlayerId()
   if (!import.meta.hot) {
@@ -109,6 +159,17 @@ function setupMultiplayer() {
       remote: true,
     })
   })
+
+  import.meta.hot.on('shooter:host', (host) => {
+    const wasHost = game.host
+    game.host = host.id === state.playerId
+    if (game.host && !wasHost) {
+      showMessage('HOST')
+      sendWorldUpdate(true)
+    }
+  })
+
+  import.meta.hot.on('shooter:world', applyWorld)
 
   import.meta.hot.send('shooter:join', localPlayerPayload())
   sendPlayerUpdate(true)
@@ -252,6 +313,7 @@ function update(delta) {
   state.player.cooldown = Math.max(0, state.player.cooldown - delta)
   state.player.invulnerable = Math.max(0, state.player.invulnerable - delta)
   state.networkTimer = Math.max(0, state.networkTimer - delta)
+  state.worldTimer = Math.max(0, state.worldTimer - delta)
   state.shake = Math.max(0, state.shake - 24 * delta)
   state.messageTimer = Math.max(0, state.messageTimer - delta)
   if (state.messageTimer === 0) game.message = ''
@@ -278,6 +340,12 @@ function update(delta) {
     bullet.x += bullet.vx * delta
     bullet.y += bullet.vy * delta
   })
+
+  if (!game.host && import.meta.hot) {
+    checkPlayerDamage()
+    state.bullets = state.bullets.filter((bullet) => bullet.y > -20)
+    return
+  }
 
   state.spawnTimer -= delta
   state.waveTimer += delta
@@ -325,6 +393,7 @@ function update(delta) {
     particle.vy *= 1 - delta * 1.8
   })
   state.particles = state.particles.filter((particle) => particle.life > 0)
+  sendWorldUpdate()
 }
 
 function checkCollisions() {
@@ -345,21 +414,25 @@ function checkCollisions() {
     }
   }
 
+  checkPlayerDamage()
+}
+
+function checkPlayerDamage() {
   state.enemies.forEach((enemy) => {
     if (Math.hypot(enemy.x - state.player.x, enemy.y - state.player.y) < enemy.radius + state.player.radius) {
-      enemy.health = 0
+      if (game.host || !import.meta.hot) enemy.health = 0
       damagePlayer()
     }
   })
   state.enemyBullets.forEach((bullet) => {
     if (Math.hypot(bullet.x - state.player.x, bullet.y - state.player.y) < bullet.radius + state.player.radius) {
-      bullet.y = state.height + 999
+      if (game.host || !import.meta.hot) bullet.y = state.height + 999
       damagePlayer()
     }
   })
   state.powerups.forEach((powerup) => {
     if (Math.hypot(powerup.x - state.player.x, powerup.y - state.player.y) < powerup.radius + state.player.radius) {
-      powerup.y = state.height + 999
+      if (game.host || !import.meta.hot) powerup.y = state.height + 999
       if (powerup.kind === 'life') game.lives = Math.min(5, game.lives + 1)
       else game.charge = 100
       showMessage(powerup.kind === 'life' ? '+1 LIFE' : 'CHARGE READY')
@@ -598,7 +671,7 @@ onBeforeUnmount(() => {
       <div><span>Lives</span><strong>{{ game.lives }}</strong></div>
       <div><span>Wave</span><strong>{{ game.wave }}</strong></div>
       <div><span>Online</span><strong>{{ game.online }}</strong></div>
-      <div><span>Mode</span><strong>{{ game.multiplayer }}</strong></div>
+      <div><span>Mode</span><strong>{{ game.host ? 'Host' : game.multiplayer }}</strong></div>
       <div><span>Best</span><strong>{{ game.best }}</strong></div>
     </section>
 
