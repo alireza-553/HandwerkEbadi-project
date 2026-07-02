@@ -1,0 +1,139 @@
+<svg width="1600" height="1050" viewBox="0 0 1600 1050" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">HandwerkEbadi Neon Shooter gameplay preview</title>
+  <desc id="desc">Preview of the LAN neon shooter with score cards, enemies, player ship, projectiles and mobile controls.</desc>
+  <defs>
+    <linearGradient id="page" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#282c22"/>
+      <stop offset="0.55" stop-color="#132136"/>
+      <stop offset="1" stop-color="#0c1320"/>
+    </linearGradient>
+    <linearGradient id="stage" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#0d1524"/>
+      <stop offset="1" stop-color="#1b2944"/>
+    </linearGradient>
+    <linearGradient id="button" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#334155"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="fire" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#facc15"/>
+      <stop offset="1" stop-color="#f97316"/>
+    </linearGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="1050" fill="url(#page)"/>
+
+  <g transform="translate(84 32)" filter="url(#softShadow)">
+    <g font-family="Inter, Segoe UI, Arial, sans-serif" font-weight="800">
+      <g>
+        <rect x="0" y="0" width="225" height="96" rx="12" fill="#111827" stroke="#334155" stroke-width="2"/>
+        <text x="24" y="36" fill="#a7f3d0" font-size="22">SCORE</text>
+        <text x="24" y="74" fill="#ffffff" font-size="34">0</text>
+      </g>
+      <g transform="translate(247 0)">
+        <rect x="0" y="0" width="225" height="96" rx="12" fill="#111827" stroke="#334155" stroke-width="2"/>
+        <text x="24" y="36" fill="#a7f3d0" font-size="22">LIVES</text>
+        <text x="24" y="74" fill="#ffffff" font-size="34">2</text>
+      </g>
+      <g transform="translate(494 0)">
+        <rect x="0" y="0" width="225" height="96" rx="12" fill="#111827" stroke="#334155" stroke-width="2"/>
+        <text x="24" y="36" fill="#a7f3d0" font-size="22">WAVE</text>
+        <text x="24" y="74" fill="#ffffff" font-size="34">1</text>
+      </g>
+      <g transform="translate(741 0)">
+        <rect x="0" y="0" width="225" height="96" rx="12" fill="#111827" stroke="#334155" stroke-width="2"/>
+        <text x="24" y="36" fill="#a7f3d0" font-size="22">ONLINE</text>
+        <text x="24" y="74" fill="#ffffff" font-size="34">1</text>
+      </g>
+      <g transform="translate(988 0)">
+        <rect x="0" y="0" width="225" height="96" rx="12" fill="#111827" stroke="#334155" stroke-width="2"/>
+        <text x="24" y="36" fill="#a7f3d0" font-size="22">MODE</text>
+        <text x="24" y="74" fill="#ffffff" font-size="34">Host</text>
+      </g>
+      <g transform="translate(1235 0)">
+        <rect x="0" y="0" width="225" height="96" rx="12" fill="#111827" stroke="#334155" stroke-width="2"/>
+        <text x="24" y="36" fill="#a7f3d0" font-size="22">BEST</text>
+        <text x="24" y="74" fill="#ffffff" font-size="34">3810</text>
+      </g>
+    </g>
+  </g>
+
+  <rect x="84" y="135" width="1432" height="790" rx="16" fill="url(#stage)" stroke="#ffffff" stroke-opacity="0.86" stroke-width="4"/>
+
+  <g fill="#cbd5e1" opacity="0.82">
+    <rect x="137" y="157" width="5" height="13"/><rect x="242" y="258" width="4" height="8"/><rect x="366" y="248" width="4" height="12"/>
+    <rect x="484" y="491" width="6" height="11"/><rect x="632" y="240" width="4" height="10"/><rect x="760" y="318" width="6" height="14"/>
+    <rect x="905" y="172" width="4" height="10"/><rect x="1051" y="724" width="6" height="14"/><rect x="1188" y="202" width="4" height="12"/>
+    <rect x="1306" y="402" width="5" height="12"/><rect x="1404" y="372" width="5" height="14"/><rect x="1478" y="515" width="5" height="10"/>
+    <rect x="187" y="643" width="6" height="14"/><rect x="321" y="612" width="6" height="14"/><rect x="441" y="929" width="5" height="12"/>
+    <rect x="573" y="620" width="5" height="13"/><rect x="733" y="775" width="4" height="10"/><rect x="873" y="856" width="6" height="14"/>
+    <rect x="996" y="732" width="4" height="8"/><rect x="1174" y="898" width="6" height="14"/><rect x="1322" y="880" width="4" height="9"/>
+    <rect x="1456" y="783" width="4" height="10"/><rect x="1504" y="932" width="4" height="10"/><rect x="1010" y="471" width="6" height="14"/>
+    <rect x="690" y="632" width="4" height="11"/><rect x="953" y="902" width="4" height="9"/><rect x="1369" y="648" width="6" height="14"/>
+  </g>
+
+  <g>
+    <path d="M300 250 L258 152 L300 132 L342 152 Z" fill="#ef2424"/>
+    <rect x="278" y="186" width="47" height="14" fill="#111827"/>
+    <rect x="270" y="258" width="64" height="7" fill="#facc15"/>
+  </g>
+  <g>
+    <path d="M795 512 L765 423 L795 407 L825 423 Z" fill="#a855f7"/>
+    <rect x="778" y="447" width="35" height="13" fill="#111827"/>
+    <rect x="774" y="518" width="42" height="7" fill="#facc15"/>
+  </g>
+  <g>
+    <path d="M1186 690 L1155 604 L1186 588 L1217 604 Z" fill="#f97316"/>
+    <rect x="1168" y="626" width="36" height="13" fill="#111827"/>
+    <rect x="1165" y="697" width="42" height="7" fill="#facc15"/>
+  </g>
+  <g>
+    <path d="M1210 875 L1180 790 L1210 774 L1240 790 Z" fill="#a855f7"/>
+    <rect x="1193" y="813" width="35" height="13" fill="#111827"/>
+    <rect x="1190" y="883" width="42" height="7" fill="#facc15"/>
+  </g>
+  <g>
+    <path d="M884 170 L865 122 L903 122 Z" fill="#f97316"/>
+    <rect x="862" y="174" width="44" height="7" fill="#facc15"/>
+  </g>
+
+  <g fill="#fb7185">
+    <circle cx="762" cy="682" r="10"/>
+    <circle cx="1025" cy="706" r="10"/>
+    <circle cx="853" cy="900" r="10"/>
+  </g>
+
+  <g>
+    <path d="M760 915 L800 800 L840 915 L800 885 Z" fill="#38bdf8"/>
+    <path d="M800 822 L782 886 L818 886 Z" fill="#f8fafc"/>
+  </g>
+
+  <rect x="116" y="1002" width="500" height="14" fill="#facc15"/>
+  <rect x="616" y="1002" width="910" height="14" fill="#0f172a" opacity="0.74"/>
+
+  <g font-family="Inter, Segoe UI, Arial, sans-serif" font-weight="900" font-size="42" text-anchor="middle">
+    <g transform="translate(560 980)">
+      <rect width="96" height="76" rx="12" fill="url(#button)" stroke="#475569" stroke-width="2"/>
+      <text x="48" y="52" fill="#ffffff">←</text>
+    </g>
+    <g transform="translate(675 980)">
+      <rect width="96" height="76" rx="12" fill="url(#button)" stroke="#475569" stroke-width="2"/>
+      <text x="48" y="52" fill="#ffffff">↑</text>
+    </g>
+    <g transform="translate(790 980)">
+      <rect width="96" height="76" rx="12" fill="url(#button)" stroke="#475569" stroke-width="2"/>
+      <text x="48" y="52" fill="#ffffff">↓</text>
+    </g>
+    <g transform="translate(905 980)">
+      <rect width="96" height="76" rx="12" fill="url(#button)" stroke="#475569" stroke-width="2"/>
+      <text x="48" y="52" fill="#ffffff">→</text>
+    </g>
+    <g transform="translate(1020 980)">
+      <rect width="170" height="76" rx="12" fill="url(#fire)" stroke="#facc15" stroke-width="2"/>
+      <text x="85" y="51" fill="#111827" font-size="28">FIRE</text>
+    </g>
+  </g>
+</svg>

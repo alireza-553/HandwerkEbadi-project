@@ -3,6 +3,10 @@
 Vue-3-Spielprojekt mit Vite. Das Spiel wird schrittweise vom Canvas-Grundlayout
 zum Runner und danach zum LAN-faehigen Neon-Shooter aufgebaut.
 
+## Spielvorschau
+
+![Neon-Shooter-Spielvorschau](docs/images/neon-shooter-preview.svg)
+
 ## Lokaler Start
 
 ```bash
