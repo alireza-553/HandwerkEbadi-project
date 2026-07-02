@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HandwerkEbadi PR-Plan v2 Handout</title>
+  <style>
+    :root {
+      color: #172033;
+      background: #f6f8fb;
+      font-family: Aptos, Inter, "Segoe UI", Arial, sans-serif;
+      line-height: 1.45;
+    }
+
+    body {
+      margin: 0;
+      padding: 32px;
+    }
+
+    main {
+      max-width: 1040px;
+      margin: 0 auto;
+    }
+
+    header {
+      padding: 34px;
+      border-radius: 14px;
+      color: #ffffff;
+      background: linear-gradient(135deg, #0f172a, #1d4ed8 55%, #7c3aed);
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      line-height: 1.12;
+    }
+
+    h1 {
+      font-size: 36px;
+    }
+
+    h2 {
+      margin-top: 30px;
+      margin-bottom: 14px;
+      color: #0f172a;
+      font-size: 24px;
+    }
+
+    h3 {
+      color: #111827;
+      font-size: 18px;
+    }
+
+    p {
+      margin: 8px 0;
+    }
+
+    .subtitle {
+      max-width: 760px;
+      margin-top: 12px;
+      color: #dbeafe;
+      font-size: 18px;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .summary div,
+    .card,
+    .rules {
+      border: 1px solid #d8e1ee;
+      border-radius: 12px;
+      background: #ffffff;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    .summary div {
+      padding: 16px;
+    }
+
+    .summary strong {
+      display: block;
+      color: #0f172a;
+      font-size: 24px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border-radius: 12px;
+      background: #ffffff;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    th,
+    td {
+      padding: 11px 12px;
+      border-bottom: 1px solid #e5eaf2;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: #ffffff;
+      background: #111827;
+      font-size: 13px;
+    }
+
+    code {
+      color: #1d4ed8;
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: 0.92em;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      padding: 18px;
+      break-inside: avoid;
+    }
+
+    .badge {
+      display: inline-block;
+      margin-bottom: 10px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      color: #ffffff;
+      background: #1d4ed8;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .badge.handwenic {
+      background: #7c3aed;
+    }
+
+    .label {
+      margin-top: 10px;
+      color: #475569;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .rules {
+      padding: 18px 22px;
+    }
+
+    .rules li {
+      margin: 8px 0;
+    }
+
+    @media print {
+      body {
+        padding: 0;
+        background: #ffffff;
+      }
+
+      main {
+        max-width: none;
+      }
+
+      header,
+      .card,
+      .rules,
+      table {
+        box-shadow: none;
+      }
+
+      .cards {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>HandwerkEbadi PR-Plan v2</h1>
+      <p class="subtitle">Handout zur sauberen Pull-Request-Reihenfolge: vom Canvas-Grundlayout ueber Runner und Neon-Shooter bis zum LAN-Multiplayer.</p>
+    </header>
+
+    <section class="summary" aria-label="Kurzuebersicht">
+      <div><strong>10</strong>kleine Pull Requests</div>
+      <div><strong>2</strong>Owner: alireza-553 und HandweNic</div>
+      <div><strong>1</strong>Merge-Reihenfolge ohne Spruenge</div>
+    </section>
+
+    <h2>Merge-Reihenfolge</h2>
+    <table>
+      <thead>
+        <tr><th>Nr.</th><th>Owner</th><th>Branch</th><th>Aufgabe</th><th>Dateien</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>alireza-553</td><td><code>alireza/game-shell-v2</code></td><td>Canvas-Spiel-Shell erstellen</td><td><code>src/App.vue</code>, <code>src/style.css</code></td></tr>
+        <tr><td>2</td><td>HandweNic</td><td><code>handwenic/subway-runner-base-v2</code></td><td>Subway-Runner-Grundspiel bauen</td><td><code>src/App.vue</code>, <code>src/style.css</code></td></tr>
+        <tr><td>3</td><td>alireza-553</td><td><code>alireza/runner-controls-v2</code></td><td>Springen, Rutschen und faire Kollisionen</td><td><code>src/App.vue</code>, <code>src/style.css</code></td></tr>
+        <tr><td>4</td><td>HandweNic</td><td><code>handwenic/runner-visuals-v2</code></td><td>Runner-Figur und Hindernisse verbessern</td><td><code>src/App.vue</code></td></tr>
+        <tr><td>5</td><td>alireza-553</td><td><code>alireza/runner-polish-v2</code></td><td>Combo, Feedback und Pacing</td><td><code>src/App.vue</code>, <code>src/style.css</code></td></tr>
+        <tr><td>6</td><td>HandweNic</td><td><code>handwenic/neon-shooter-base-v2</code></td><td>Runner in Neon-Shooter umbauen</td><td><code>src/App.vue</code>, <code>src/style.css</code></td></tr>
+        <tr><td>7</td><td>alireza-553</td><td><code>alireza/lan-player-relay-v2</code></td><td>LAN-Spieler und Relay einbauen</td><td><code>src/App.vue</code>, <code>src/style.css</code>, <code>vite.config.js</code></td></tr>
+        <tr><td>8</td><td>HandweNic</td><td><code>handwenic/shared-enemy-world-v2</code></td><td>Gemeinsame Gegnerwelt synchronisieren</td><td><code>src/App.vue</code>, <code>vite.config.js</code></td></tr>
+        <tr><td>9</td><td>alireza-553</td><td><code>alireza/lan-delay-polish-v2</code></td><td>LAN-Delay reduzieren</td><td><code>src/App.vue</code>, <code>vite.config.js</code></td></tr>
+        <tr><td>10</td><td>HandweNic</td><td><code>handwenic/test-and-docs-v2</code></td><td>Build und LAN-Start dokumentieren</td><td><code>README.md</code></td></tr>
+      </tbody>
+    </table>
+
+    <h2>Details pro PR</h2>
+    <section class="cards">
+      <article class="card">
+        <span class="badge">alireza-553</span>
+        <h3>1. <code>alireza/game-shell-v2</code></h3>
+        <p><strong>Ziel:</strong> Die Vue-Demo wird durch eine Canvas-Spiel-Shell ersetzt.</p>
+        <p class="label">Aenderungen</p>
+        <p>Canvas, ResizeObserver, Render-Loop, HUD, Stage, Controls, Vollbild-Layout und responsive Basis.</p>
+        <p class="label">Nicht enthalten</p>
+        <p>Kein Runner, keine Coins, kein Shooter, kein LAN.</p>
+      </article>
+
+      <article class="card">
+        <span class="badge handwenic">HandweNic</span>
+        <h3>2. <code>handwenic/subway-runner-base-v2</code></h3>
+        <p><strong>Ziel:</strong> Aus der Shell wird ein erstes spielbares Runner-Grundspiel.</p>
+        <p class="label">Aenderungen</p>
+        <p>Drei Spuren, Spurwechsel, Coins, Hindernisse, Score, Bestscore, Start, Game Over und Restart.</p>
+        <p class="label">Nicht enthalten</p>
+        <p>Kein Springen, kein Rutschen, keine Visual-Polish, kein LAN.</p>
+      </article>
+
+      <article class="card">
+        <span class="badge">alireza-553</span>
+        <h3>3. <code>alireza/runner-controls-v2</code></h3>
+        <p><strong>Ziel:</strong> Runner-Steuerung und Kollisionen werden fairer.</p>
+        <p class="label">Aenderungen</p>
+        <p>Jump, Slide, High-/Low-Hindernisse, fairere Hitboxen und erweiterte Touch-/Keyboard-Steuerung.</p>
+        <p class="label">Nicht enthalten</p>
+        <p>Keine neuen Visuals, kein Combo-System, kein Shooter.</p>
+      </article>
+
+      <article class="card">
+        <span class="badge handwenic">HandweNic</span>
+        <h3>4. <code>handwenic/runner-visuals-v2</code></h3>
+        <p><strong>Ziel:</strong> Runner und Hindernisse werden optisch klarer.</p>
+        <p class="label">Aenderungen</p>
+        <p>Runner-Figur, Laufpose, Slide-Pose, Gate, Barrier, Cone und Crate.</p>
+        <p class="label">Nicht enthalten</p>
+        <p>Keine Score- oder Combo-Aenderungen, kein Shooter.</p>
+      </article>
+
+      <article class="card">
+        <span class="badge">alireza-553</span>
+        <h3>5. <code>alireza/runner-polish-v2</code></h3>
+        <p><strong>Ziel:</strong> Der Runner wird spannender und belohnender.</p>
+        <p class="label">Aenderungen</p>
+        <p>Combo, Multiplikator, Partikel, Feedback-Messages, Combo-HUD und Pacing-Anpassung.</p>
+        <p class="label">Nicht enthalten</p>
+        <p>Kein Shooter-Umbau, kein LAN.</p>
+      </article>
+
+      <article class="card">
+        <span class="badge handwenic">HandweNic</span>
+        <h3>6. <code>handwenic/neon-shooter-base-v2</code></h3>
+        <p><strong>Ziel:</strong> Bewusster Genre-Wechsel vom Runner zum Neon-Shooter.</p>
+        <p class="label">Aenderungen</p>
+        <p>Spieler-Schiff, freie Bewegung, Schuesse, Gegner, Waves, Powerups, Lives, Charge und Fire-Button.</p>
+        <p class="label">Nicht enthalten</p>
+        <p>Keine Remote-Spieler, keine gemeinsame Gegnerwelt, keine LAN-Docs.</p>
+      </article>
+
+      <article class="card">
+        <span class="badge">alireza-553</span>
+        <h3>7. <code>alireza/lan-player-relay-v2</code></h3>
+        <p><strong>Ziel:</strong> Erste LAN-Multiplayer-Grundlage.</p>
+        <p class="label">Aenderungen</p>
+        <p>Player-ID, Remote-Spieler, Remote-Schuesse, Online/Mode-HUD und Vite WebSocket Relay.</p>
+        <p class="label">Nicht enthalten</p>
+        <p>Keine Host-Wahl, keine gemeinsame Gegnerwelt, keine Delay-Optimierung.</p>
+      </article>
+
+      <article class="card">
+        <span class="badge handwenic">HandweNic</span>
+        <h3>8. <code>handwenic/shared-enemy-world-v2</code></h3>
+        <p><strong>Ziel:</strong> Alle LAN-Spieler teilen dieselbe Gegnerwelt.</p>
+        <p class="label">Aenderungen</p>
+        <p>Host-Wahl, hostPayload, applyWorld, normalisierte Entities und shooter:world Relay.</p>
+        <p class="label">Nicht enthalten</p>
+        <p>Keine Delay-Optimierung, keine neuen Gegnerarten.</p>
+      </article>
+
+      <article class="card">
+        <span class="badge">alireza-553</span>
+        <h3>9. <code>alireza/lan-delay-polish-v2</code></h3>
+        <p><strong>Ziel:</strong> LAN-Sync fuehlt sich direkter an.</p>
+        <p class="label">Aenderungen</p>
+        <p>NETWORK_SEND_INTERVAL, WORLD_SYNC_INTERVAL, shooter:player Einzelupdates und kuerzere stale-player Zeit.</p>
+        <p class="label">Nicht enthalten</p>
+        <p>Keine neuen Features, keine README-Aenderung.</p>
+      </article>
+
+      <article class="card">
+        <span class="badge handwenic">HandweNic</span>
+        <h3>10. <code>handwenic/test-and-docs-v2</code></h3>
+        <p><strong>Ziel:</strong> Start, Build, Steuerung und LAN-Test werden dokumentiert.</p>
+        <p class="label">Aenderungen</p>
+        <p>Lokaler Start, LAN-Start, Beispiel-IP, Steuerung und Multiplayer-Testplan in der README.</p>
+        <p class="label">Nicht enthalten</p>
+        <p>Keine Code- oder Gameplay-Aenderungen.</p>
+      </article>
+    </section>
+
+    <h2>Regeln fuer das Mergen</h2>
+    <section class="rules">
+      <ul>
+        <li>Immer nur einen PR mergen.</li>
+        <li>Nach jedem Merge den naechsten Branch gegen den neuen <code>main</code> aktualisieren.</li>
+        <li>Dateien muessen als UTF-8 gespeichert sein.</li>
+        <li>Keine fertige Datei komplett aus <code>tmpprj</code> kopieren.</li>
+        <li>Vor jedem PR <code>npm run build</code> ausfuehren.</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
