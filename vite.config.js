@@ -66,6 +66,7 @@ function lanMultiplayerRelay() {
   }
 }
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  base: command === 'build' ? '/HandwerkEbadi-project/' : '/',
   plugins: [vue(), lanMultiplayerRelay()],
-})
+}))
