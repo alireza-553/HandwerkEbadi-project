@@ -9,28 +9,16 @@ zum Runner und danach zum LAN-faehigen Neon-Shooter aufgebaut.
 
 ## Online-Demo
 
-Nach dem Merge in `main` kann die statische Spiel-Demo ueber GitHub Pages
-bereitgestellt werden:
+Die statische Spiel-Demo ist ueber GitHub Pages erreichbar:
 
-```text
-https://alireza-553.github.io/HandwerkEbadi-project/
-```
+<p>
+  <a href="https://alireza-553.github.io/HandwerkEbadi-project/">
+    <img src="https://img.shields.io/badge/Demo%20starten-GitHub%20Pages-2ea44f?style=for-the-badge" alt="Demo starten">
+  </a>
+</p>
 
 Hinweis: GitHub Pages hostet nur die gebaute Demo. Der lokale LAN-Relay aus
 Vite laeuft weiterhin ueber `npm run dev` im eigenen Netzwerk.
-
-### Demo auf GitHub Pages starten
-
-1. Pull Request mit der GitHub-Pages-Konfiguration in `main` mergen.
-2. Im Repository **Settings > Pages** oeffnen.
-3. Bei **Source** die Option **GitHub Actions** auswaehlen.
-4. Im Repository den Tab **Actions** oeffnen.
-5. Warten, bis der Workflow **Deploy GitHub Pages** erfolgreich abgeschlossen ist.
-6. Danach die Demo im Browser oeffnen:
-
-```text
-https://alireza-553.github.io/HandwerkEbadi-project/
-```
 
 Wenn zuerst noch `404` angezeigt wird, kurz warten und die Seite danach neu
 laden. GitHub Pages braucht nach dem ersten Deployment manchmal ein paar
