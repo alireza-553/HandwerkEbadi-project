@@ -9,15 +9,35 @@ zum Runner und danach zum LAN-faehigen Neon-Shooter aufgebaut.
 
 ## Online-Demo
 
-Nach dem Merge in `main` kann die statische Spiel-Demo ueber GitHub Pages
-bereitgestellt werden:
+Die statische Spiel-Demo ist ueber GitHub Pages erreichbar:
 
-```text
-https://alireza-553.github.io/HandwerkEbadi-project/
-```
+<p>
+  <a href="https://alireza-553.github.io/HandwerkEbadi-project/">
+    <img src="https://img.shields.io/badge/Demo%20starten-GitHub%20Pages-2ea44f?style=for-the-badge" alt="Demo starten">
+  </a>
+</p>
 
 Hinweis: GitHub Pages hostet nur die gebaute Demo. Der lokale LAN-Relay aus
 Vite laeuft weiterhin ueber `npm run dev` im eigenen Netzwerk.
+
+### Warum Multiplayer auf GitHub Pages nicht funktioniert
+
+GitHub Pages kann nur statische Dateien ausliefern, also HTML, CSS,
+JavaScript und Bilder. Fuer den Multiplayer braucht das Spiel aber einen
+laufenden Relay-Server, der die Spieler verbindet und Positions-, Schuss- und
+Welt-Daten weiterleitet.
+
+Dieser Relay ist aktuell im Vite-Dev-Server eingebaut. Er laeuft deshalb nur,
+wenn das Projekt lokal mit `npm run dev` gestartet wird. Auf GitHub Pages wird
+kein Vite-Server gestartet und es gibt dort keinen eigenen WebSocket-Relay.
+
+Die GitHub-Pages-Version ist darum als Online-Demo fuer das Spiel gedacht. Fuer
+echten Online-Multiplayer muesste der Relay spaeter separat auf einem Server
+wie Render, Railway oder Fly.io laufen.
+
+Wenn zuerst noch `404` angezeigt wird, kurz warten und die Seite danach neu
+laden. GitHub Pages braucht nach dem ersten Deployment manchmal ein paar
+Minuten.
 
 ## Lokaler Start
 
