@@ -7,6 +7,18 @@ zum Runner und danach zum LAN-faehigen Neon-Shooter aufgebaut.
 
 ![Neon-Shooter-Spielvorschau](docs/images/neon-shooter-preview.svg)
 
+## Online-Demo
+
+Nach dem Merge in `main` kann die statische Spiel-Demo ueber GitHub Pages
+bereitgestellt werden:
+
+```text
+https://alireza-553.github.io/HandwerkEbadi-project/
+```
+
+Hinweis: GitHub Pages hostet nur die gebaute Demo. Der lokale LAN-Relay aus
+Vite laeuft weiterhin ueber `npm run dev` im eigenen Netzwerk.
+
 ## Lokaler Start
 
 ```bash
