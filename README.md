@@ -19,6 +19,23 @@ https://alireza-553.github.io/HandwerkEbadi-project/
 Hinweis: GitHub Pages hostet nur die gebaute Demo. Der lokale LAN-Relay aus
 Vite laeuft weiterhin ueber `npm run dev` im eigenen Netzwerk.
 
+### Demo auf GitHub Pages starten
+
+1. Pull Request mit der GitHub-Pages-Konfiguration in `main` mergen.
+2. Im Repository **Settings > Pages** oeffnen.
+3. Bei **Source** die Option **GitHub Actions** auswaehlen.
+4. Im Repository den Tab **Actions** oeffnen.
+5. Warten, bis der Workflow **Deploy GitHub Pages** erfolgreich abgeschlossen ist.
+6. Danach die Demo im Browser oeffnen:
+
+```text
+https://alireza-553.github.io/HandwerkEbadi-project/
+```
+
+Wenn zuerst noch `404` angezeigt wird, kurz warten und die Seite danach neu
+laden. GitHub Pages braucht nach dem ersten Deployment manchmal ein paar
+Minuten.
+
 ## Lokaler Start
 
 ```bash
