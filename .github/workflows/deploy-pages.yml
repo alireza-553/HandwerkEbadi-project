@@ -1,17 +1,21 @@
 name: Deploy GitHub Pages
 
 on:
+  # Nach jedem Merge in main wird die statische Demo automatisch neu gebaut.
   push:
     branches:
       - main
+  # Erlaubt einen manuellen Start des Deployments im GitHub-Actions-Tab.
   workflow_dispatch:
 
 permissions:
+  # Minimalrechte fuer Checkout, Pages-Upload und Deployment.
   contents: read
   pages: write
   id-token: write
 
 concurrency:
+  # Verhindert, dass mehrere Pages-Deployments gleichzeitig laufen.
   group: pages
   cancel-in-progress: false
 
@@ -33,9 +37,11 @@ jobs:
         run: npm ci
 
       - name: Build static demo
+        # Erstellt den dist-Ordner aus dem Vite-Projekt.
         run: npm run build
 
       - name: Upload Pages artifact
+        # GitHub Pages deployed spaeter genau diesen gebauten dist-Ordner.
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
@@ -49,5 +55,6 @@ jobs:
 
     steps:
       - name: Deploy to GitHub Pages
+        # Veroeffentlicht das hochgeladene Build-Artefakt als GitHub-Pages-Seite.
         id: deployment
         uses: actions/deploy-pages@v4
