@@ -20,6 +20,7 @@ const NETWORK_SEND_INTERVAL = 0.025
 const WORLD_SYNC_INTERVAL = 0.04
 
 const state = {
+  // Canvas-Kontext und Spielfeldgroesse: darauf wird das komplette Spiel gezeichnet.
   ctx: null,
   width: 0,
   height: 0,
@@ -405,6 +406,7 @@ function update(delta) {
 }
 
 function checkCollisions() {
+  // Prueft, ob eigene Schuesse Gegner treffen und zieht ihnen Leben ab.
   for (const bullet of state.bullets) {
     for (const enemy of state.enemies) {
       if (Math.hypot(bullet.x - enemy.x, bullet.y - enemy.y) < bullet.radius + enemy.radius) {
@@ -422,22 +424,26 @@ function checkCollisions() {
     }
   }
 
+  // Danach werden Kollisionen geprueft, die dem Spieler schaden oder helfen.
   checkPlayerDamage()
 }
 
 function checkPlayerDamage() {
+  // Gegner beruehren den Spieler: Der Spieler verliert ein Leben.
   state.enemies.forEach((enemy) => {
     if (Math.hypot(enemy.x - state.player.x, enemy.y - state.player.y) < enemy.radius + state.player.radius) {
       if (game.host || !import.meta.hot) enemy.health = 0
       damagePlayer()
     }
   })
+  // Gegnerische Schuesse treffen den Spieler: Der Spieler verliert ein Leben.
   state.enemyBullets.forEach((bullet) => {
     if (Math.hypot(bullet.x - state.player.x, bullet.y - state.player.y) < bullet.radius + state.player.radius) {
       if (game.host || !import.meta.hot) bullet.y = state.height + 999
       damagePlayer()
     }
   })
+  // Powerups beruehren den Spieler: Leben wird erhoeht oder der Spezialschuss geladen.
   state.powerups.forEach((powerup) => {
     if (Math.hypot(powerup.x - state.player.x, powerup.y - state.player.y) < powerup.radius + state.player.radius) {
       if (game.host || !import.meta.hot) powerup.y = state.height + 999
@@ -450,6 +456,7 @@ function checkPlayerDamage() {
 }
 
 function drawBackground(ctx) {
+  // Zeichnet den Weltraum-Hintergrund und bewegt die Sterne ueber das Canvas.
   const gradient = ctx.createLinearGradient(0, 0, 0, state.height)
   gradient.addColorStop(0, '#101827')
   gradient.addColorStop(0.58, '#1f2a44')
@@ -463,6 +470,7 @@ function drawBackground(ctx) {
 }
 
 function drawPlayer(ctx) {
+  // Zeichnet das eigene Schiff. Bei kurzer Unverwundbarkeit blinkt es.
   const blink = state.player.invulnerable > 0 && Math.floor(performance.now() / 90) % 2 === 0
   if (blink) return
   const { x, y } = state.player
@@ -484,6 +492,7 @@ function drawPlayer(ctx) {
 }
 
 function drawRemotePlayers(ctx) {
+  // Zeichnet andere LAN-Spieler anhand der synchronisierten Positionsdaten.
   for (const player of state.remotePlayers.values()) {
     if (player.status === 'over') continue
     const x = player.x * state.width
@@ -504,6 +513,7 @@ function drawRemotePlayers(ctx) {
 }
 
 function drawEnemy(ctx, enemy) {
+  // Zeichnet Gegner inklusive Typ-Farbe, Form und Lebensbalken.
   ctx.save()
   ctx.translate(enemy.x, enemy.y)
   ctx.fillStyle = enemy.kind === 'tank' ? '#dc2626' : enemy.kind === 'zigzag' ? '#a855f7' : '#f97316'
@@ -522,6 +532,7 @@ function drawEnemy(ctx, enemy) {
 }
 
 function drawPowerup(ctx, powerup) {
+  // Zeichnet einsammelbare Powerups fuer Leben oder aufgeladene Schuesse.
   ctx.fillStyle = powerup.kind === 'life' ? '#22c55e' : '#facc15'
   ctx.beginPath()
   ctx.arc(powerup.x, powerup.y, powerup.radius, 0, Math.PI * 2)
@@ -529,6 +540,7 @@ function drawPowerup(ctx, powerup) {
 }
 
 function drawProjectiles(ctx) {
+  // Zeichnet eigene Schuesse und gegnerische Projektile.
   state.bullets.forEach((bullet) => {
     ctx.fillStyle = '#67e8f9'
     ctx.fillRect(bullet.x - 3, bullet.y - 14, 6, 18)
@@ -542,6 +554,7 @@ function drawProjectiles(ctx) {
 }
 
 function drawParticles(ctx) {
+  // Zeichnet kurze Explosionseffekte aus Partikeln.
   state.particles.forEach((particle) => {
     ctx.globalAlpha = Math.max(0, particle.life)
     ctx.fillStyle = particle.color
@@ -553,6 +566,7 @@ function drawParticles(ctx) {
 }
 
 function drawFeedback(ctx) {
+  // Zeichnet Ladebalken und kurze Statusmeldungen direkt im Spielfeld.
   ctx.fillStyle = 'rgba(15, 23, 42, 0.62)'
   ctx.fillRect(18, state.height - 22, state.width - 36, 8)
   ctx.fillStyle = '#facc15'
@@ -566,6 +580,7 @@ function drawFeedback(ctx) {
 }
 
 function drawOverlay(ctx) {
+  // Zeichnet Start- und Game-Over-Overlay ueber das Canvas.
   if (game.status === 'running') return
   ctx.fillStyle = 'rgba(8, 13, 24, 0.74)'
   ctx.fillRect(0, 0, state.width, state.height)
@@ -578,6 +593,7 @@ function drawOverlay(ctx) {
 }
 
 function render() {
+  // Rendert pro Frame alle sichtbaren Spielobjekte in fester Reihenfolge.
   const ctx = state.ctx
   if (!ctx) return
   const shakeX = state.shake ? (Math.random() - 0.5) * state.shake : 0
@@ -598,6 +614,7 @@ function render() {
 }
 
 function loop(time) {
+  // Hauptschleife: berechnet Spielzustand und zeichnet danach das Canvas neu.
   const delta = Math.min((time - state.lastTime) / 1000 || 0, 0.035)
   state.lastTime = time
   update(delta)
@@ -606,6 +623,7 @@ function loop(time) {
 }
 
 function fitCanvas() {
+  // Passt die echte Canvas-Aufloesung an die CSS-Groesse und Display-Dichte an.
   const el = canvas.value
   if (!el) return
   const rect = el.getBoundingClientRect()
@@ -684,6 +702,7 @@ onBeforeUnmount(() => {
     </section>
 
     <button class="stage" type="button" @click="fireBullet" aria-label="Spiel starten oder schiessen">
+      <!-- Das Canvas ist die Zeichenflaeche fuer Hintergrund, Spieler, Gegner, Schuesse und Effekte. -->
       <canvas ref="canvas" aria-label="Neon Shooter"></canvas>
     </button>
 
