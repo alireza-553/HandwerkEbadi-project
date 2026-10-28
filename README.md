@@ -5,7 +5,11 @@ zum Runner und danach zum LAN-faehigen Neon-Shooter aufgebaut.
 
 ## Spielvorschau
 
-![Neon-Shooter-Spielvorschau](docs/images/neon-shooter-preview.svg)
+[![Neon Shooter – Projektvideo öffnen](docs/images/neon-shooter-video-preview.jpg)](docs/videos/neon-shooter.mp4)
+
+Auf das Vorschaubild klicken, um das Projektvideo zu öffnen (ca. 51 Sekunden).
+
+[MP4-Video herunterladen (ca. 9,4 MB)](https://github.com/alireza-553/HandwerkEbadi-project/raw/refs/heads/main/docs/videos/neon-shooter.mp4)
 
 ## Online-Demo
 
